@@ -1,0 +1,19 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`renders homepage unchanged 1`] = `
+<div
+  aria-hidden="true"
+>
+  <main
+    class="main"
+  >
+    <div
+      class="header"
+    >
+      <h1>
+        Ichat
+      </h1>
+    </div>
+  </main>
+</div>
+`;
