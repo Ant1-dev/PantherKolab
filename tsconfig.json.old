@@ -27,7 +27,7 @@
     "src/lib/mongodb.ts",
     "__tests__/pages/index.tsx",
     "scripts/*.ts"
-  ],
+, "jest.setup.ts.old", "jest.config.ts.old"  ],
   "exclude": [
     "node_modules",
     "./cypress.config.ts",
