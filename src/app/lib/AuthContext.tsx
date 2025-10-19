@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError('')
     setLoading(true)
     try {
-      await signUp({
+      const result = await signUp({
         username: email,
         password: password,
         options: {
@@ -76,6 +76,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           },
         },
       })
+
+      if (result.userId) {
+        await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: result.userId,
+            email: email,
+            firstName: name,
+            lastName: additionalAttributes.family_name || '',
+          }),
+        })
+      }
     } catch (err: any) {
       const errorMessage = err.message || 'Registration failed'
       setError(errorMessage)

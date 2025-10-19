@@ -8,7 +8,7 @@ const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || 'Users'
 
 export const userService = {
   // Create user profile
-  async createUser(userData: UserProfile) {
+  async createUser(userData: Partial<UserProfile>) {
     const params = {
       TableName: TABLE_NAME,
       Item: {

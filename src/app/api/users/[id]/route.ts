@@ -14,7 +14,7 @@ export async function GET(
 
         if (tokenUserId !== params.userId) {
             return NextResponse.json(
-                { error: 'Forbidden - You can only acces your own profile'},
+                { error: 'Forbidden - You can only access your own profile'},
                 { status: 403 }
             )
         }
@@ -39,4 +39,43 @@ export async function GET(
     }
 }
 
+export async function PUT(
+    req: NextRequest,
+    { params }: { params: { userId: string } }
+) {
+    try {
+        const session = await fetchAuthSession();
+        const tokenUserId = session.tokens?.idToken?.payload.sub as string;
+
+        if (tokenUserId !== params.userId) {
+            return NextResponse.json(
+                { error: 'Forbidden - You can only update your own profile'},
+                { status: 403 }
+            );
+        }
+
+        const updates = await req.json();
+
+        const existingUser = await userService.getUser(params.userId);
+        if (!existingUser) {
+            return NextResponse.json(
+                {error: 'User not found' },
+                {status: 404}
+            );
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const {userId, email, createdAt, ...allowedUpdates } = updates; // Prevents updates on certain fields
+
+        const updatedUser = await userService.updateUser(params.userId, allowedUpdates);
+
+        return NextResponse.json({user: updatedUser }, {status: 200});
+    } catch (error: unknown) {
+        console.error('Error updating user:', error);
+        return NextResponse.json(
+            { error: 'Internal server error'},
+            { status: 500 }
+        );
+    }
+}
 
