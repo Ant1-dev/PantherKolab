@@ -13,7 +13,7 @@ export interface VerifyParams {
 }
 
 export interface AuthContextType {
-  // State
+  // State for checks
   isAuthenticated: boolean
   user: AuthUser | null
   loading: boolean
@@ -27,7 +27,7 @@ export interface AuthContextType {
   logout: () => Promise<void>
   // create account
   register: (params: SignUpParams) => Promise<void>
-  // Verify email code
+  // Verify email code 
   verify: (params: VerifyParams) => Promise<void>
   // resend the verification code
   resendVerificationCode: (email: string) => Promise<void>
