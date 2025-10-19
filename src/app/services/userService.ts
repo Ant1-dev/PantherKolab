@@ -12,9 +12,20 @@ export const userService = {
     const params = {
       TableName: TABLE_NAME,
       Item: {
-        ...userData,
+        userId: userData.userId,
+        email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        fullName: `${userData.firstName} ${userData.lastName}`,
+        emailVerified: false,
+        profilePicture: null,
+        major: null,
+        year: null,
+        bio: null,
+        interests: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        ...userData // Allow any additional fields
       },
     }
     

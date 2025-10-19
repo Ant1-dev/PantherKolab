@@ -10,13 +10,9 @@ export async function GET(
     try {
         // Verify is user is logged in 
         const session = await fetchAuthSession();
-        const tokenUserId = session.tokens?.idToken?.payload.sub as string;
 
-        if (tokenUserId !== params.userId) {
-            return NextResponse.json(
-                { error: 'Forbidden - You can only access your own profile'},
-                { status: 403 }
-            )
+        if (!session.tokens?.idToken) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
         // Get user from dynamoDB
