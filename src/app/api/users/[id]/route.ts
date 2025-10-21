@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { fetchAuthSession } from "aws-amplify/auth"
-import { userService } from "@/app/services/userService"
+import { userService } from "@/services/userService"
 
 // Get a specific user profile
 export async function GET(

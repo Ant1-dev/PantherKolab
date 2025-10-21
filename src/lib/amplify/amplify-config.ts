@@ -1,7 +1,7 @@
-import { Amplify } from "aws-amplify";
+import { Amplify, type ResourcesConfig } from "aws-amplify";
 
-Amplify.configure({
-  Auth: {
+export const authConfig: ResourcesConfig["Auth"] = {
+ 
     Cognito: {
       userPoolId: process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID!,
       userPoolClientId: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID!,
@@ -28,7 +28,14 @@ Amplify.configure({
         requireSpecialCharacters: true,
       },
     },
-  },
+  }
+
+Amplify.configure({
+   Auth: authConfig
 });
+
+export  function ConfigureAmplifyClientSide(){
+  return null;
+}
 
 export default Amplify;

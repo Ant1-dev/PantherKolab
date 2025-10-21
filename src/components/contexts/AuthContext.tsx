@@ -12,7 +12,7 @@ import {
   resendSignUpCode, 
   AuthUser
 } from 'aws-amplify/auth'
-import { AuthContextType, VerifyParams, SignUpParams } from '../types/AuthContextTypes'
+import { AuthContextType, VerifyParams, SignUpParams } from '@/types/AuthContextTypes'
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
