@@ -1,68 +1,110 @@
 // services/userService.ts
 import { dynamoDb } from "../lib/dynamodb"
-import { PutCommand, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
-import { UserProfile } from "../types/UserProfile"
+import { PutCommand, GetCommand, UpdateCommand, QueryCommand } from '@aws-sdk/lib-dynamodb'
+import {
+  UserProfile,
+  CreateUserInput,
+  UpdateUserInput,
+  TABLE_NAMES,
+  INDEX_NAMES,
+  AcademicYear
+} from "../types/database"
 
-const TABLE_NAME = process.env.DYNAMODB_TABLE_NAME || 'Users'
+const TABLE_NAME = TABLE_NAMES.USERS
 
 
 export const userService = {
   // Create user profile
-  async createUser(userData: Partial<UserProfile>) {
+  async createUser(userData: CreateUserInput): Promise<UserProfile> {
+    const now = new Date().toISOString()
+
+    const userProfile: UserProfile = {
+      userId: userData.userId,
+      email: userData.email,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      fullName: `${userData.firstName} ${userData.lastName}`.trim(),
+      emailVerified: false,
+      profilePicture: null,
+      major: null,
+      year: null,
+      bio: null,
+      interests: [],
+      portfolioUrl: null,
+      createdAt: now,
+      updatedAt: now,
+    }
+
     const params = {
       TableName: TABLE_NAME,
-      Item: {
-        userId: userData.userId,
-        email: userData.email,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        fullName: `${userData.firstName} ${userData.lastName}`,
-        emailVerified: false,
-        profilePicture: null,
-        major: null,
-        year: null,
-        bio: null,
-        interests: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        ...userData // Allow any additional fields
-      },
+      Item: userProfile,
+      // Prevent overwriting existing user
+      ConditionExpression: 'attribute_not_exists(userId)'
     }
-    
-    await dynamoDb.send(new PutCommand(params))
-    return params.Item
+
+    try {
+      await dynamoDb.send(new PutCommand(params))
+      return userProfile
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'name' in error && error.name === 'ConditionalCheckFailedException') {
+        throw new Error('User already exists')
+      }
+      throw error
+    }
   },
 
-  // Get user profile
-  async getUser(userId: string) {
+  // Get user profile by userId
+  async getUser(userId: string): Promise<UserProfile | null> {
     const params = {
       TableName: TABLE_NAME,
       Key: { userId },
     }
-    
+
     const result = await dynamoDb.send(new GetCommand(params))
-    return result.Item as UserProfile | undefined
+    return result.Item ? (result.Item as UserProfile) : null
+  },
+
+  // Get user by email (using EmailIndex GSI)
+  async getUserByEmail(email: string): Promise<UserProfile | null> {
+    const params = {
+      TableName: TABLE_NAME,
+      IndexName: INDEX_NAMES.USERS.EMAIL,
+      KeyConditionExpression: 'email = :email',
+      ExpressionAttributeValues: {
+        ':email': email.toLowerCase()
+      },
+      Limit: 1
+    }
+
+    const result = await dynamoDb.send(new QueryCommand(params))
+    return result.Items && result.Items.length > 0 ? (result.Items[0] as UserProfile) : null
   },
 
   // Update user profile
-  async updateUser(userId: string, updates: Partial<UserProfile>) {
+  async updateUser(userId: string, updates: UpdateUserInput): Promise<UserProfile> {
     const updateExpression: string[] = []
     const expressionAttributeNames: Record<string, string> = {}
     const expressionAttributeValues: Record<string, unknown> = {}
 
     // Build update expression dynamically
-    Object.keys(updates).forEach((key, index) => {
-      if (key !== 'userId' && key !== 'email') { // Prevent updating userId and email
+    let index = 0
+    Object.keys(updates).forEach((key) => {
+      if (key !== 'userId' && key !== 'email' && key !== 'createdAt') {
         updateExpression.push(`#attr${index} = :val${index}`)
         expressionAttributeNames[`#attr${index}`] = key
-        expressionAttributeValues[`:val${index}`] = updates[key]
+        expressionAttributeValues[`:val${index}`] = updates[key as keyof UpdateUserInput]
+        index++
       }
     })
 
-    // Add updatedAt
+    // Always update updatedAt
     updateExpression.push(`#updatedAt = :updatedAt`)
     expressionAttributeNames['#updatedAt'] = 'updatedAt'
     expressionAttributeValues[':updatedAt'] = new Date().toISOString()
+
+    if (updateExpression.length === 1) {
+      throw new Error('No valid fields to update')
+    }
 
     const params = {
       TableName: TABLE_NAME,
@@ -71,15 +113,49 @@ export const userService = {
       ExpressionAttributeNames: expressionAttributeNames,
       ExpressionAttributeValues: expressionAttributeValues,
       ReturnValues: 'ALL_NEW' as const,
+      ConditionExpression: 'attribute_exists(userId)' // Ensure user exists
     }
 
-    const result = await dynamoDb.send(new UpdateCommand(params))
-    return result.Attributes as UserProfile
+    try {
+      const result = await dynamoDb.send(new UpdateCommand(params))
+      return result.Attributes as UserProfile
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'name' in error && error.name === 'ConditionalCheckFailedException') {
+        throw new Error('User not found')
+      }
+      throw error
+    }
   },
 
   // Check if user exists
   async userExists(userId: string): Promise<boolean> {
     const user = await this.getUser(userId)
-    return !!user
+    return user !== null
+  },
+
+  // Get users by major and year (using MajorIndex GSI)
+  async getUsersByMajorAndYear(major: string, year?: AcademicYear): Promise<UserProfile[]> {
+    const params: any = {
+      TableName: TABLE_NAME,
+      IndexName: INDEX_NAMES.USERS.MAJOR,
+      KeyConditionExpression: year
+        ? 'major = :major AND #year = :year'
+        : 'major = :major',
+      ExpressionAttributeValues: year
+        ? { ':major': major, ':year': year }
+        : { ':major': major }
+    }
+
+    if (year) {
+      params.ExpressionAttributeNames = { '#year': 'year' }
+    }
+
+    const result = await dynamoDb.send(new QueryCommand(params))
+    return (result.Items || []) as UserProfile[]
+  },
+
+  // Mark email as verified
+  async verifyEmail(userId: string): Promise<UserProfile> {
+    return this.updateUser(userId, { emailVerified: true })
   },
 }
