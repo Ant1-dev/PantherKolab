@@ -1,8 +1,7 @@
-import { LoginForm } from '@/components/auth/LoginForm';
-import Image from "next/image";
+import React from "react";
+import { LoginForm } from "@/components/auth/LoginForm";
 import * as styles from "./login.style";
-
-export default function Login() {
+export function Login({}) {
   return (
     <div
       className="w-[100%] h-[100vh] relative bg-sky-600 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] overflow-hidden"
@@ -16,7 +15,7 @@ export default function Login() {
       </div>
 
       {/* <div className="w-[513px] h-12 left-[27px] top-[20px] absolute justify-start text-white text-4xl font-bold font-['Bitter']">
-        PantherKolab
+       PantherKolab
       </div> */}
       <div
         className={`absolute left-0 top-1/2 -translate-y-1/2 w-[calc(50%)})] flex items-center justify-center`}
@@ -26,12 +25,11 @@ export default function Login() {
           Connected.
         </div>
       </div>
-      <Image
-        className="w-[503px] h-[639px] left-[465px] top-[39px] absolute opacity-5"
-        width={503}
-        height={639}
-        src="/images/login-panther-paws.png"
-        alt="Decorative panther paw steps"
+
+      {/* Decorative panther paws overlay - positioned at center horizontally, spanning both sections */}
+      <div
+        className="absolute top-[39px] left-1/2 -translate-x-1/2 w-[503px] h-[639px] pointer-events-none z-10"
+        style={styles.decorativePaws}
       />
     </div>
   );

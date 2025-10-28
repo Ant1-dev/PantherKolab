@@ -51,3 +51,6 @@ next-env.d.ts
 
 # project-specific
 src/utils/secretsManager.ts
+
+# conversation/session files
+prompt.md

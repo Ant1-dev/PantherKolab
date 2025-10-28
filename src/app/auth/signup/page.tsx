@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import * as styles from "./signup.style";
 
 export default function SignUp() {
   const [formData, setFormData] = useState({
@@ -32,12 +33,12 @@ export default function SignUp() {
   // Password strength calculation
   const getPasswordStrength = () => {
     const metCount = Object.values(passwordRequirements).filter(Boolean).length;
-    if (metCount === 0) return { label: "", color: "bg-gray-200", width: "0%" };
+    if (metCount === 0) return { label: "", colorKey: "empty" as const, width: "0%" };
     if (metCount <= 2)
-      return { label: "Weak", color: "bg-red-500", width: "33%" };
+      return { label: "Weak", colorKey: "weak" as const, width: "33%" };
     if (metCount <= 4)
-      return { label: "Medium", color: "bg-yellow-500", width: "66%" };
-    return { label: "Strong", color: "bg-green-500", width: "100%" };
+      return { label: "Medium", colorKey: "medium" as const, width: "66%" };
+    return { label: "Strong", colorKey: "strong" as const, width: "100%" };
   };
 
   const passwordStrength = getPasswordStrength();
@@ -110,12 +111,7 @@ export default function SignUp() {
   return (
     <div
       className="w-[100%] h-[100vh] relative bg-sky-600 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] overflow-hidden"
-      style={{
-        backgroundImage: "url('/images/login-splash.png')",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-      }}
+      style={styles.root}
     >
       {/* Right side - Sign up form */}
       <div className="w-1/2 h-full px-16 py-12 right-[0px] top-0 absolute bg-gray-50 flex flex-col items-center overflow-y-auto gap-y-8">
@@ -240,12 +236,18 @@ export default function SignUp() {
               <div className="mt-2">
                 <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
                   <div
-                    className={`h-full ${passwordStrength.color} transition-all duration-300`}
-                    style={{ width: passwordStrength.width }}
+                    className="h-full transition-all duration-300"
+                    style={{
+                      backgroundColor: styles.passwordStrength[passwordStrength.colorKey].backgroundColor,
+                      width: passwordStrength.width
+                    }}
                   />
                 </div>
                 {passwordStrength.label && (
-                  <p className="mt-1 text-xs font-semibold">
+                  <p
+                    className="mt-1 text-xs font-semibold"
+                    style={{ color: styles.passwordStrength[passwordStrength.colorKey].color }}
+                  >
                     {passwordStrength.label}
                   </p>
                 )}
