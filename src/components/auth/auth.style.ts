@@ -1,8 +1,18 @@
+// Shared styles for all auth pages (login, signup, confirm-email, reset-password, etc.)
+
 export const root = {
   backgroundImage: "url('/images/login-splash.png')",
   backgroundSize: "cover",
   backgroundPosition: "center",
   backgroundRepeat: "no-repeat",
+};
+
+export const decorativePaws = {
+  backgroundImage: "url('/images/login-panther-paws.png')",
+  backgroundSize: "contain",
+  backgroundPosition: "center",
+  backgroundRepeat: "no-repeat",
+  opacity: 0.05
 };
 
 export const passwordStrength = {

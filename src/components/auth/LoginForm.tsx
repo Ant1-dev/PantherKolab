@@ -36,7 +36,7 @@ export function LoginForm({}) {
         className="w-80 h-12 px-4 mb-2 bg-white rounded-lg border border-gray-200 text-zinc-600 text-sm font-semibold font-['Bitter'] focus:outline-none focus:border-sky-600"
       />
       <a
-        href="/auth/forgot-password"
+        href="/auth/reset-password"
         className="justify-start text-sky-600 text-sm font-semibold font-['Bitter'] hover:underline cursor-pointer"
       >
         Forgot Password?

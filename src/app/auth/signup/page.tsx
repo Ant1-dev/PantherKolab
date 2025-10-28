@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import * as styles from "./signup.style";
+import * as authStyles from "@/components/auth/auth.style";
 
 export default function SignUp() {
   const [formData, setFormData] = useState({
@@ -111,7 +111,7 @@ export default function SignUp() {
   return (
     <div
       className="w-[100%] h-[100vh] relative bg-sky-600 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] overflow-hidden"
-      style={styles.root}
+      style={authStyles.root}
     >
       {/* Right side - Sign up form */}
       <div className="w-1/2 h-full px-16 py-12 right-[0px] top-0 absolute bg-gray-50 flex flex-col items-center overflow-y-auto gap-y-8">
@@ -238,7 +238,7 @@ export default function SignUp() {
                   <div
                     className="h-full transition-all duration-300"
                     style={{
-                      backgroundColor: styles.passwordStrength[passwordStrength.colorKey].backgroundColor,
+                      backgroundColor: authStyles.passwordStrength[passwordStrength.colorKey].backgroundColor,
                       width: passwordStrength.width
                     }}
                   />
@@ -246,7 +246,7 @@ export default function SignUp() {
                 {passwordStrength.label && (
                   <p
                     className="mt-1 text-xs font-semibold"
-                    style={{ color: styles.passwordStrength[passwordStrength.colorKey].color }}
+                    style={{ color: authStyles.passwordStrength[passwordStrength.colorKey].color }}
                   >
                     {passwordStrength.label}
                   </p>

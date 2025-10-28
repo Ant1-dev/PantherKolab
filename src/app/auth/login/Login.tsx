@@ -1,11 +1,11 @@
 import React from "react";
 import { LoginForm } from "@/components/auth/LoginForm";
-import * as styles from "./login.style";
+import * as authStyles from "@/components/auth/auth.style";
 export function Login({}) {
   return (
     <div
       className="w-[100%] h-[100vh] relative bg-sky-600 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] overflow-hidden"
-      style={styles.root}
+      style={authStyles.root}
     >
       <div className="w-1/2 h-[1024px] px-16 py-24 right-[0px] top-0 absolute bg-gray-50 inline-flex flex-col items-center overflow-hidden gap-y-8">
         <LoginForm />
@@ -29,7 +29,7 @@ export function Login({}) {
       {/* Decorative panther paws overlay - positioned at center horizontally, spanning both sections */}
       <div
         className="absolute top-[39px] left-1/2 -translate-x-1/2 w-[503px] h-[639px] pointer-events-none z-10"
-        style={styles.decorativePaws}
+        style={authStyles.decorativePaws}
       />
     </div>
   );

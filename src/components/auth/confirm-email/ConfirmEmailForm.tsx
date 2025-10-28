@@ -123,7 +123,9 @@ export function ConfirmEmailForm() {
           disabled={isLoading}
           className={`w-full h-12 px-4 mt-2 mb-2 bg-white rounded-lg border ${
             error ? 'border-red-500' : 'border-gray-200'
-          } text-zinc-600 text-sm font-semibold font-['Bitter'] text-center tracking-widest text-2xl focus:outline-none focus:border-sky-600 disabled:bg-gray-100 disabled:cursor-not-allowed`}
+          } text-zinc-600 font-semibold font-['Bitter'] focus:outline-none focus:border-sky-600 disabled:bg-gray-100 disabled:cursor-not-allowed ${
+            confirmationCode ? 'text-2xl tracking-widest text-center' : 'text-sm text-left'
+          }`}
         />
         {error && (
           <p className="text-red-500 text-xs mt-1">{error}</p>
