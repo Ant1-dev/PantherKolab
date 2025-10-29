@@ -33,7 +33,8 @@ export default function SignUp() {
   // Password strength calculation
   const getPasswordStrength = () => {
     const metCount = Object.values(passwordRequirements).filter(Boolean).length;
-    if (metCount === 0) return { label: "", colorKey: "empty" as const, width: "0%" };
+    if (metCount === 0)
+      return { label: "", colorKey: "empty" as const, width: "0%" };
     if (metCount <= 2)
       return { label: "Weak", colorKey: "weak" as const, width: "33%" };
     if (metCount <= 4)
@@ -114,7 +115,7 @@ export default function SignUp() {
       style={authStyles.root}
     >
       {/* Right side - Sign up form */}
-      <div className="w-1/2 h-full px-16 py-12 right-[0px] top-0 absolute bg-gray-50 flex flex-col items-center overflow-y-auto gap-y-8">
+      <div className="w-1/2 h-full px-16 py-12 right-[0px] top-0 absolute bg-gray-50 flex flex-col items-center overflow-y-auto gap-y-4">
         <div className="w-full max-w-md p-8 bg-white rounded-xl shadow-[0px_4px_16px_0px_rgba(0,0,0,0.08)] flex flex-col justify-start items-start gap-4">
           {/* Header */}
           <div className="w-full">
@@ -238,15 +239,21 @@ export default function SignUp() {
                   <div
                     className="h-full transition-all duration-300"
                     style={{
-                      backgroundColor: authStyles.passwordStrength[passwordStrength.colorKey].backgroundColor,
-                      width: passwordStrength.width
+                      backgroundColor:
+                        authStyles.passwordStrength[passwordStrength.colorKey]
+                          .backgroundColor,
+                      width: passwordStrength.width,
                     }}
                   />
                 </div>
                 {passwordStrength.label && (
                   <p
                     className="mt-1 text-xs font-semibold"
-                    style={{ color: authStyles.passwordStrength[passwordStrength.colorKey].color }}
+                    style={{
+                      color:
+                        authStyles.passwordStrength[passwordStrength.colorKey]
+                          .color,
+                    }}
                   >
                     {passwordStrength.label}
                   </p>
@@ -255,7 +262,7 @@ export default function SignUp() {
             )}
 
             {/* Password Requirements */}
-            <div className="mt-3 space-y-1">
+            <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1">
               <RequirementItem met={passwordRequirements.minLength}>
                 At least 8 characters
               </RequirementItem>

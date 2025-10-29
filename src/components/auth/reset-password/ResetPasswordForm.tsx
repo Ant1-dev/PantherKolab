@@ -219,7 +219,7 @@ export function ResetPasswordForm() {
         )}
 
         {/* Password Requirements */}
-        <div className="mt-3 space-y-1">
+        <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1">
           <RequirementItem met={passwordRequirements.minLength}>
             At least 8 characters
           </RequirementItem>
