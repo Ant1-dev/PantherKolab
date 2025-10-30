@@ -100,12 +100,12 @@ export default function Login() {
                     Connected.
                 </div>
             </div>
-            <Image
+            {/* <Image
                 className="w-[503px] h-[639px] left-[465px] top-[39px] absolute opacity-5"
                 width={503}
                 height={639}
                 src="/images/login-panther-paws.png"
-                alt="Decorative panther paw steps" />
+                alt="Decorative panther paw steps" /> */}
         </div>
     );
 }

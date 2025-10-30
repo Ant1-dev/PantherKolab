@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { Amplify } from 'aws-amplify';
+import { authConfig } from '@/lib/amplify/amplify-config';
 import { 
   signIn, 
   signOut, 
@@ -13,6 +15,10 @@ import {
   AuthUser
 } from 'aws-amplify/auth'
 import { AuthContextType, VerifyParams, SignUpParams } from '@/types/AuthContextTypes'
+
+if (typeof window !== 'undefined') {
+  Amplify.configure({ Auth: authConfig }, { ssr: true });
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
@@ -92,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err: any) {
       const errorMessage = err.message || 'Registration failed'
       setError(errorMessage)
+      console.error('Registration error:', err)
       throw new Error(errorMessage)
     } finally {
       setLoading(false)

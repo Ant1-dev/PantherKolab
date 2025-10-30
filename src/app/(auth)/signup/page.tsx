@@ -1,6 +1,9 @@
 "use client";
 
+import { useAuth } from "@/components/contexts/AuthContext";
+import { SignUpParams } from "@/types/AuthContextTypes";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function SignUp() {
@@ -17,6 +20,9 @@ export default function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const {register, verify, resendVerificationCode} = useAuth();
+  const router = useRouter();
 
   // Password validation checks
   const passwordRequirements = {
@@ -94,18 +100,32 @@ export default function SignUp() {
   };
 
   // Handle form submission
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
-
-    setIsLoading(true);
-    // TODO: Implement actual signup logic
-    console.log("Form data:", formData);
-
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
+const handleSubmit = async () => {
+  if (!validateForm()) return;
+  
+  setIsLoading(true);
+  console.log("Form data:", formData);
+  
+  const { firstName, lastName, email, password } = formData;
+  const params: SignUpParams = { 
+    name: firstName,
+    email: email,
+    password: password,
+    family_name: lastName,
   };
+  
+  try {
+    await register(params);
+    // Fixed: Use parentheses () not backticks ``
+    router.push(`/verify?email=${encodeURIComponent(email)}`);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    console.error("Error signing up:", error);
+    setErrors(error.message || 'Registration failed');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <div
@@ -385,13 +405,13 @@ export default function SignUp() {
         </div>
       </div>
 
-      <Image
+      {/* <Image
         className="w-[503px] h-[639px] left-[465px] top-[39px] absolute opacity-5"
         width={503}
         height={639}
         src="/images/login-panther-paws.png"
         alt="Decorative panther paw steps"
-      />
+      /> */}
     </div>
   );
 }

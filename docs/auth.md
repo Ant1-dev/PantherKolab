@@ -17,8 +17,8 @@ npm install aws-amplify @aws-sdk/client-dynamodb @aws-sdk/lib-dynamodb
 NEXT_PUBLIC_COGNITO_USER_POOL_ID=your_pool_id
 NEXT_PUBLIC_COGNITO_CLIENT_ID=your_client_id
 NEXT_PUBLIC_AWS_REGION=your_region
-NEXT_PUBLIC_AWS_ACCESS_KEY_ID=your_key
-NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY=your_secret
+AWS_ACCESS_KEY_ID=your_key
+AWS_SECRET_ACCESS_KEY=your_secret
 DYNAMODB_TABLE_NAME=Users
 ```
 

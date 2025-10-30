@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import "@/lib/amplify/amplify-config";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/contexts/AuthContext";
