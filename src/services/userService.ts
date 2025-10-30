@@ -135,6 +135,7 @@ export const userService = {
 
   // Get users by major and year (using MajorIndex GSI)
   async getUsersByMajorAndYear(major: string, year?: AcademicYear): Promise<UserProfile[]> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const params: any = {
       TableName: TABLE_NAME,
       IndexName: INDEX_NAMES.USERS.MAJOR,
