@@ -1,18 +1,24 @@
 # Authentication Documentation
 
 ## Overview
-AWS Amplify + Cognito for auth, DynamoDB for user profiles. All auth logic is in `AuthContext`.
+
+AWS Amplify + Cognito for auth, DynamoDB for user profiles. All auth logic is in `AuthContext`. Configuration is managed through AWS Parameter Store instead of `.env` files.
 
 ---
 
 ## Quick Setup
 
 ### 1. Install Dependencies
+
 ```bash
-npm install aws-amplify @aws-sdk/client-dynamodb @aws-sdk/lib-dynamodb
+npm install aws-amplify @aws-sdk/client-dynamodb @aws-sdk/lib-dynamodb @aws-sdk/client-ssm aws-jwt-verify
 ```
 
 ### 2. Environment Variables (`.env.local`)
+
+**Note:** The app is moving away from `.env` files to AWS Parameter Store for configuration management.
+
+Legacy environment variables (still supported):
 ```bash
 NEXT_PUBLIC_COGNITO_USER_POOL_ID=your_pool_id
 NEXT_PUBLIC_COGNITO_CLIENT_ID=your_client_id
@@ -23,87 +29,112 @@ DYNAMODB_TABLE_NAME=Users
 ```
 
 ### 3. Wrap App with AuthProvider
+
 ```typescript
-// app/layout.tsx
-import { AuthProvider } from '@/lib/AuthContext'
+// src/app/layout.tsx
+import { AuthProvider } from "@/components/contexts/AuthContext";
+import { ConfigureAmplifyClientSide } from "@/lib/amplify/amplify-config";
 
 export default function RootLayout({ children }) {
   return (
     <html>
       <body>
+        <ConfigureAmplifyClientSide />
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
-  )
+  );
 }
 ```
 
 ---
 
 ## Using Auth in Components
+
 ```typescript
-'use client'
-import { useAuth } from '@/lib/AuthContext'
+"use client";
+import { useAuth } from "@/components/contexts/AuthContext";
 
 export default function MyComponent() {
-  const { 
-    isAuthenticated,  // boolean
-    user,             // user object
-    loading,          // boolean
-    error,            // string
-    login,            // function
-    logout,           // function
-    register          // function
-  } = useAuth()
-    // Not all is required ex: {login, logout} = useAuth()
+  const {
+    isAuthenticated, // boolean
+    user, // user object
+    loading, // boolean
+    error, // string
+    login, // function
+    logout, // function
+    register, // function
+    verify, // function
+    resendVerificationCode, // function
+    forgotPassword, // function
+    confirmResetPassword, // function
+  } = useAuth();
+  // Not all is required ex: {login, logout} = useAuth()
   return (
     <div>
       {isAuthenticated ? (
         <button onClick={logout}>Logout</button>
       ) : (
-        <button onClick={() => login('email', 'pass')}>Login</button>
+        <button onClick={() => login("email", "pass")}>Login</button>
       )}
     </div>
-  )
+  );
 }
 ```
 
 ---
 
 ## Protecting Routes
+
 ```typescript
-import ProtectedRoute from '@/components/ProtectedRoute'
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 export default function Dashboard() {
   return (
     <ProtectedRoute>
       <div>Protected content</div>
     </ProtectedRoute>
-  )
+  );
 }
 ```
 
 ---
 
 ## Available Functions
+
 ```typescript
 // Login
-await login(email, password)
+await login(email, password);
 
 // Register (creates Cognito user + DynamoDB profile)
-await register({ name, email, password })
+await register({ name, email, password, family_name: lastName });
 
-// Verify email
-await verify({ email, code })
+// Verify email after signup
+await verify({ email, code });
 
 // Resend verification code
-await resendVerificationCode(email)
+await resendVerificationCode(email);
+
+// Request password reset (sends code to email)
+await forgotPassword(email);
+
+// Confirm password reset with code
+await confirmResetPassword({ email, code, newPassword });
 
 // Logout
-await logout()
+await logout();
 
 // Get access token for API calls
-const token = await getAccessToken()
+const token = await getAccessToken();
+
+// Clear error message
+clearError();
+
+// Set custom error message
+setError(message);
+
+// Re-check authentication status
+await checkAuth();
 ```
 
 ---
@@ -111,9 +142,11 @@ const token = await getAccessToken()
 ## API Endpoints
 
 ### `POST /api/auth/signup`
+
 Creates user profile in DynamoDB after Cognito signup.
 
 **Request Body:**
+
 ```json
 {
   "userId": "cognito-sub",
@@ -124,6 +157,7 @@ Creates user profile in DynamoDB after Cognito signup.
 ```
 
 **Response:** `201 Created`
+
 ```json
 {
   "message": "User profile created successfully",
@@ -146,34 +180,88 @@ Creates user profile in DynamoDB after Cognito signup.
 ```
 
 **Error Responses:**
+
 - `400` - Missing required fields (userId, email, firstName, lastName)
 - `409` - User already exists
 - `500` - Internal server error
 
-### `GET /api/users/:userId`
+### `GET /api/users/[id]`
+
 Get user profile (must be authenticated).
 
-### `PUT /api/users/:userId`
+**Authentication Required:** Bearer token in Authorization header
+
+**Response:** `200 OK`
+
+```json
+{
+  "userId": "cognito-sub",
+  "email": "user@email.com",
+  "firstName": "John",
+  "lastName": "Doe",
+  "fullName": "John Doe",
+  // ... other user fields
+}
+```
+
+### `PUT /api/users/[id]`
+
 Update user profile (must be authenticated, can only update own profile).
+
+**Authentication Required:** Bearer token in Authorization header
+
+**Request Body:**
+```json
+{
+  "firstName": "Jane",
+  "bio": "Updated bio",
+  "major": "Computer Science"
+}
+```
 
 ---
 
 ## File Structure
+
 ```
-lib/
-├── AuthContext.tsx       # All auth logic
-├── amplify-config.ts     # Amplify config
-└── dynamodb.ts           # DynamoDB client
-
-components/
-└── ProtectedRoute.tsx    # Route protection wrapper
-
-services/
-└── userService.ts        # DynamoDB operations
-
-app/api/
-├── auth/signup/route.ts  # Create user in DB
-└── users/[userId]/route.ts  # Get/Update user
+src/
+├── lib/
+│   ├── amplify/
+│   │   └── amplify-config.ts      # Amplify configuration
+│   ├── parameterStore/
+│   │   ├── index.ts               # Parameter Store client
+│   │   └── ParameterStoreContext.tsx  # Parameter Store context
+│   └── dynamodb/
+│       └── index.ts               # DynamoDB client
+│
+├── components/
+│   ├── contexts/
+│   │   └── AuthContext.tsx        # All auth logic and state
+│   ├── auth/
+│   │   ├── LoginForm.tsx          # Login form component
+│   │   ├── confirm-email/         # Email verification components
+│   │   ├── reset-password/        # Password reset components
+│   │   └── forgot-password/       # Forgot password components
+│   └── ProtectedRoute.tsx         # Route protection wrapper
+│
+├── services/
+│   └── userService.ts             # DynamoDB operations
+│
+├── app/
+│   ├── api/
+│   │   ├── auth/signup/route.ts   # Create user in DB
+│   │   └── users/[id]/route.ts    # Get/Update user
+│   └── auth/
+│       ├── login/page.tsx         # Login page
+│       ├── signup/page.tsx        # Signup page
+│       ├── confirm-email/page.tsx # Email verification page
+│       ├── forgot-password/page.tsx # Request reset page
+│       └── reset-password/page.tsx  # Reset password page
+│
+└── types/
+    ├── AuthContextTypes.ts        # Auth type definitions
+    ├── database.ts                # Database type definitions
+    └── parameters.ts              # Parameter Store types
 ```
 
 ---
@@ -184,20 +272,54 @@ app/api/
 - **"NotAuthorizedException"** - Wrong password
 - **"UserNotConfirmedException"** - Email not verified yet
 - **"UsernameExistsException"** - Email already registered
+- **"CodeMismatchException"** - Invalid verification/reset code
+- **"InvalidParameterException"** - Invalid email format or password requirements not met
+- **"LimitExceededException"** - Too many requests, try again later
 
 ---
 
 ## Testing
 
 **Test API directly (Postman):**
+
 ```
 POST http://localhost:3000/api/auth/signup
-GET http://localhost:3000/api/users/:userId
-PUT http://localhost:3000/api/users/:userId
+GET http://localhost:3000/api/users/[id]
+PUT http://localhost:3000/api/users/[id]
 ```
 
-**Test full flow:**
-1. Register at `/auth/register`
-2. Verify email at `/auth/verify`
-3. Login at `/auth/login`
-4. Access protected routes
+**Test full authentication flow:**
+
+1. **Register** at `/auth/signup`
+   - Enter FIU email, password, and name
+   - User is created in Cognito and DynamoDB
+   - Verification code sent to email
+
+2. **Verify Email** at `/auth/confirm-email?email=user@fiu.edu`
+   - Enter 6-digit code from email
+   - Account is activated
+
+3. **Login** at `/auth/login`
+   - Enter email and password
+   - Redirected to dashboard on success
+
+4. **Forgot Password** at `/auth/forgot-password`
+   - Enter email to receive reset code
+   - Redirected to reset password page
+
+5. **Reset Password** at `/auth/reset-password?email=user@fiu.edu`
+   - Enter reset code and new password
+   - Redirected to login
+
+6. **Access Protected Routes**
+   - Wrap any page with `<ProtectedRoute>`
+   - Unauthenticated users redirected to login
+
+## Username Format
+
+**Important:** The app uses `email.split("@")[0]` as the Cognito username (e.g., "johndoe" from "johndoe@fiu.edu"). This format must be used consistently across:
+- Signup
+- Login
+- Email verification
+- Password reset
+- Any direct Cognito operations
