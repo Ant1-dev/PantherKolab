@@ -29,40 +29,40 @@ PantherKolab now uses AWS Parameter Store for centralized configuration manageme
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                  React Component                        │
-│  const { value } = useParameter('cognito/user-pool-id')│
+│  const { value } = useParameter('cognito/user-pool-id') │
 └───────────────────────┬─────────────────────────────────┘
                         │
                         ▼
 ┌─────────────────────────────────────────────────────────┐
 │            ParameterStoreContext                        │
-│  - Provides React context                              │
-│  - Manages loading states                              │
-│  - Handles errors                                      │
+│  - Provides React context                               │
+│  - Manages loading states                               │
+│  - Handles errors                                       │
 └───────────────────────┬─────────────────────────────────┘
                         │
                         ▼
 ┌─────────────────────────────────────────────────────────┐
 │         ParameterStoreClient (Singleton)                │
-│  - On-demand fetching                                  │
-│  - In-memory caching (5 min TTL)                       │
-│  - Cache management                                    │
+│  - On-demand fetching                                   │
+│  - In-memory caching (5 min TTL)                        │
+│  - Cache management                                     │
 └───────────────────────┬─────────────────────────────────┘
                         │
                         ▼
 ┌─────────────────────────────────────────────────────────┐
 │              AWS SSM Client                             │
-│  - Authentication: Access Key + Secret                 │
-│  - Fetches from Parameter Store                       │
-│  - Decrypts SecureString parameters                    │
+│  - Authentication: Access Key + Secret                  │
+│  - Fetches from Parameter Store                         │
+│  - Decrypts SecureString parameters                     │
 └─────────────────────────────────────────────────────────┘
                         │
                         ▼
 ┌─────────────────────────────────────────────────────────┐
 │        AWS Parameter Store                              │
-│  /panther-kolab/dev/cognito/user-pool-id               │
-│  /panther-kolab/dev/cognito/client-id                  │
-│  /panther-kolab/dev/dynamodb/users-table               │
-│  ...                                                   │
+│  /panther-kolab/dev/cognito/user-pool-id                │
+│  /panther-kolab/dev/cognito/client-id                   │
+│  /panther-kolab/dev/dynamodb/users-table                │
+│  ...                                                    │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -84,10 +84,10 @@ Parameters are fetched **only when requested**:
 
 ```tsx
 // First request: Fetches from AWS (~100ms)
-const { value } = useParameter('cognito/user-pool-id');
+const { value } = useParameter("cognito/user-pool-id");
 
 // Second request (within 5 min): Returns from cache (~1ms)
-const { value } = useParameter('cognito/user-pool-id');
+const { value } = useParameter("cognito/user-pool-id");
 ```
 
 ### 3. Caching
@@ -104,7 +104,7 @@ Warm up the cache during app initialization:
 ```tsx
 <ParameterStoreProvider
   config={config}
-  prefetchKeys={['cognito/user-pool-id', 'cognito/client-id']}
+  prefetchKeys={["cognito/user-pool-id", "cognito/client-id"]}
 >
   <App />
 </ParameterStoreProvider>
@@ -121,6 +121,7 @@ chmod +x setup-parameter-store.sh
 ```
 
 Enter when prompted:
+
 - Region: `us-east-1`
 - Environment: `dev`
 - Parameter name: `cognito/user-pool-id`
@@ -143,7 +144,7 @@ AWS_REGION=us-east-1
 
 ```tsx
 // src/app/layout.tsx
-import { ParameterStoreProvider } from '@/lib/parameterStore/ParameterStoreContext';
+import { ParameterStoreProvider } from "@/lib/parameterStore/ParameterStoreContext";
 
 export default function RootLayout({ children }) {
   return (
@@ -152,12 +153,12 @@ export default function RootLayout({ children }) {
         <ParameterStoreProvider
           config={{
             region: process.env.AWS_REGION!,
-            environment: 'dev',
-            prefix: '/panther-kolab',
+            environment: "dev",
+            prefix: "/panther-kolab",
             accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
             secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
           }}
-          prefetchKeys={['cognito/user-pool-id', 'cognito/client-id']}
+          prefetchKeys={["cognito/user-pool-id", "cognito/client-id"]}
         >
           {children}
         </ParameterStoreProvider>
@@ -170,12 +171,12 @@ export default function RootLayout({ children }) {
 ### Step 4: Use in Components
 
 ```tsx
-'use client';
+"use client";
 
-import { useParameter } from '@/hooks/useParameter';
+import { useParameter } from "@/hooks/useParameter";
 
 export function MyComponent() {
-  const { value, loading, error } = useParameter('cognito/user-pool-id');
+  const { value, loading, error } = useParameter("cognito/user-pool-id");
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error.message}</div>;
@@ -191,6 +192,7 @@ export function MyComponent() {
 Each team member gets their own IAM user:
 
 1. **Create IAM User** in AWS Console:
+
    - Username: `panther-dev-{name}` (e.g., `panther-dev-john`)
    - Access type: Programmatic access
 
@@ -202,10 +204,7 @@ Each team member gets their own IAM user:
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": [
-        "ssm:GetParameter",
-        "ssm:GetParametersByPath"
-      ],
+      "Action": ["ssm:GetParameter", "ssm:GetParametersByPath"],
       "Resource": "arn:aws:ssm:us-east-1:*:parameter/panther-kolab/*"
     },
     {
@@ -228,6 +227,7 @@ Each team member gets their own IAM user:
 ### For CI/CD
 
 Create a separate IAM user:
+
 - Username: `panther-code-user`
 - Same policy as above
 - Add credentials to GitHub Secrets or CI/CD environment
@@ -236,19 +236,19 @@ Create a separate IAM user:
 
 All parameters are defined in [src/types/parameters.ts](../src/types/parameters.ts):
 
-| Parameter | Description | Example Value |
-|-----------|-------------|---------------|
-| `cognito/user-pool-id` | Cognito User Pool ID | `us-east-1_4fWvgNvC3` |
-| `cognito/client-id` | Cognito App Client ID | `2fahfmaruotenn36...` |
-| `cognito/domain` | Cognito Domain URL | `https://...auth.us-east-1.amazoncognito.com` |
-| `dynamodb/users-table` | DynamoDB Users table | `PantherKolab-Users-dev` |
-| `dynamodb/conversations-table` | DynamoDB Conversations table | `PantherKolab-Conversations-dev` |
-| `dynamodb/messages-table` | DynamoDB Messages table | `PantherKolab-Messages-dev` |
-| `dynamodb/groups-table` | DynamoDB Groups table | `PantherKolab-Groups-dev` |
-| `app-urls/redirect-sign-in` | Post-login redirect | `http://localhost:3000/` |
-| `app-urls/redirect-sign-out` | Post-logout redirect | `http://localhost:3000/auth/login` |
-| `appsync/graphql-endpoint` | AppSync endpoint | `https://xxx.appsync-api.us-east-1.amazonaws.com/graphql` |
-| `appsync/api-key` | AppSync API key | `da2-xxx` |
+| Parameter                      | Description                  | Example Value                                             |
+| ------------------------------ | ---------------------------- | --------------------------------------------------------- |
+| `cognito/user-pool-id`         | Cognito User Pool ID         | `us-east-1_4fWvgNvC3`                                     |
+| `cognito/client-id`            | Cognito App Client ID        | `2fahfmaruotenn36...`                                     |
+| `cognito/domain`               | Cognito Domain URL           | `https://...auth.us-east-1.amazoncognito.com`             |
+| `dynamodb/users-table`         | DynamoDB Users table         | `PantherKolab-Users-dev`                                  |
+| `dynamodb/conversations-table` | DynamoDB Conversations table | `PantherKolab-Conversations-dev`                          |
+| `dynamodb/messages-table`      | DynamoDB Messages table      | `PantherKolab-Messages-dev`                               |
+| `dynamodb/groups-table`        | DynamoDB Groups table        | `PantherKolab-Groups-dev`                                 |
+| `app-urls/redirect-sign-in`    | Post-login redirect          | `http://localhost:3000/`                                  |
+| `app-urls/redirect-sign-out`   | Post-logout redirect         | `http://localhost:3000/auth/login`                        |
+| `appsync/graphql-endpoint`     | AppSync endpoint             | `https://xxx.appsync-api.us-east-1.amazonaws.com/graphql` |
+| `appsync/api-key`              | AppSync API key              | `da2-xxx`                                                 |
 
 ## API Reference
 
@@ -259,7 +259,7 @@ All parameters are defined in [src/types/parameters.ts](../src/types/parameters.
 Fetch a single parameter.
 
 ```tsx
-const { value, loading, error, refresh } = useParameter('cognito/user-pool-id');
+const { value, loading, error, refresh } = useParameter("cognito/user-pool-id");
 ```
 
 #### `useParameters(keys, options?)`
@@ -268,8 +268,8 @@ Fetch multiple parameters.
 
 ```tsx
 const { values, loading, error, refresh } = useParameters([
-  'cognito/user-pool-id',
-  'cognito/client-id',
+  "cognito/user-pool-id",
+  "cognito/client-id",
 ]);
 ```
 
@@ -279,8 +279,8 @@ Fetch parameter with fallback value.
 
 ```tsx
 const url = useParameterWithFallback(
-  'app-urls/redirect-sign-in',
-  'http://localhost:3000/'
+  "app-urls/redirect-sign-in",
+  "http://localhost:3000/"
 );
 ```
 
@@ -322,11 +322,13 @@ Clear cache (specific key or all).
 ## Costs
 
 **With AWS-managed KMS key (default):**
+
 - Storage: **FREE** (up to 10,000 parameters)
 - API calls: **$0.05 per 10,000 calls**
 - KMS decryption: **FREE** (with AWS-managed key)
 
 **Estimated for PantherKolab:**
+
 - ~15 parameters
 - ~1,000 API calls/day (with 5-min cache)
 - **Monthly cost: < $0.50** 🎉
@@ -334,20 +336,25 @@ Clear cache (specific key or all).
 ## Troubleshooting
 
 ### "Parameter Store not initialized yet"
+
 → Wrap component in `ParameterStoreProvider`
 
 ### "Access Denied"
+
 → Check IAM permissions (need `ssm:GetParameter` and `kms:Decrypt`)
 
 ### "Parameter not found"
+
 → Run `setup-parameter-store.sh` to create parameters
 
 ### Stale values
+
 → Use `clearCache()` or reduce TTL
 
 ## Migration from .env.local
 
 1. ✅ Keep only AWS credentials in `.env.local`:
+
    ```bash
    AWS_ACCESS_KEY_ID=...
    AWS_SECRET_ACCESS_KEY=...
@@ -355,17 +362,19 @@ Clear cache (specific key or all).
    ```
 
 2. ✅ Move all other config to Parameter Store:
+
    ```bash
    ./scripts/setup-parameter-store.sh
    ```
 
 3. ✅ Update code to use hooks:
+
    ```tsx
    // Before
    const poolId = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID;
 
    // After
-   const { value: poolId } = useParameter('cognito/user-pool-id');
+   const { value: poolId } = useParameter("cognito/user-pool-id");
    ```
 
 ## Next Steps
