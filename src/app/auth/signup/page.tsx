@@ -22,7 +22,7 @@ export default function SignUp() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const {register, verify, resendVerificationCode} = useAuth();
+  const { register, verify, resendVerificationCode } = useAuth();
   const router = useRouter();
 
   // Password validation checks
@@ -102,32 +102,32 @@ export default function SignUp() {
   };
 
   // Handle form submission
-const handleSubmit = async () => {
-  if (!validateForm()) return;
-  
-  setIsLoading(true);
-  console.log("Form data:", formData);
-  
-  const { firstName, lastName, email, password } = formData;
-  const params: SignUpParams = { 
-    name: firstName,
-    email: email,
-    password: password,
-    family_name: lastName,
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    process.env.NODE_ENV != "production" && console.log("Form data:", formData);
+
+    const { firstName, lastName, email, password } = formData;
+    const params: SignUpParams = {
+      name: firstName,
+      email: email,
+      password: password,
+      family_name: lastName,
+    };
+
+    try {
+      await register(params);
+      // Fixed: Use parentheses () not backticks ``
+      router.push(`/auth/confirm-email?email=${encodeURIComponent(email)}`);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.error("Error signing up:", error);
+      setErrors(error.message || "Registration failed");
+    } finally {
+      setIsLoading(false);
+    }
   };
-  
-  try {
-    await register(params);
-    // Fixed: Use parentheses () not backticks ``
-    router.push(`/verify?email=${encodeURIComponent(email)}`);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (error: any) {
-    console.error("Error signing up:", error);
-    setErrors(error.message || 'Registration failed');
-  } finally {
-    setIsLoading(false);
-  }
-};
 
   return (
     <div

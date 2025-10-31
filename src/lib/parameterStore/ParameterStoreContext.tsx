@@ -4,19 +4,35 @@
  * Provides React context for parameter management with caching
  */
 
-'use client';
+"use client";
 
-import React, { createContext, useContext, useCallback, useState, useEffect } from 'react';
-import { parameterStore } from './index';
-import type { ParameterKey, ParameterFetchOptions, ParameterStoreConfig } from '@/types/parameters';
-import { ParameterStoreError } from '@/types/parameters';
+import React, {
+  createContext,
+  useContext,
+  useCallback,
+  useState,
+  useEffect,
+} from "react";
+import { parameterStore } from "./index";
+import type {
+  ParameterKey,
+  ParameterFetchOptions,
+  ParameterStoreConfig,
+} from "@/types/parameters";
+import { ParameterStoreError } from "@/types/parameters";
 
 interface ParameterStoreContextValue {
   /** Get a parameter value */
-  getParameter: (key: ParameterKey, options?: ParameterFetchOptions) => Promise<string>;
+  getParameter: (
+    key: ParameterKey,
+    options?: ParameterFetchOptions
+  ) => Promise<string>;
 
   /** Get multiple parameters */
-  getParameters: (keys: ParameterKey[], options?: ParameterFetchOptions) => Promise<Record<string, string>>;
+  getParameters: (
+    keys: ParameterKey[],
+    options?: ParameterFetchOptions
+  ) => Promise<Record<string, string>>;
 
   /** Clear cache for specific key or all */
   clearCache: (key?: ParameterKey) => void;
@@ -31,7 +47,9 @@ interface ParameterStoreContextValue {
   initError: Error | null;
 }
 
-const ParameterStoreContext = createContext<ParameterStoreContextValue | undefined>(undefined);
+const ParameterStoreContext = createContext<
+  ParameterStoreContextValue | undefined
+>(undefined);
 
 interface ParameterStoreProviderProps {
   children: React.ReactNode;
@@ -88,16 +106,23 @@ export function ParameterStoreProvider({
 
         // Pre-fetch parameters if specified
         if (prefetchKeys.length > 0) {
-          console.log(`[ParameterStore] Pre-fetching ${prefetchKeys.length} parameters...`);
+          process.env.NODE_ENV != "production" &&
+            console.log(
+              `[ParameterStore] Pre-fetching ${prefetchKeys.length} parameters...`
+            );
           await parameterStore.getParameters(prefetchKeys);
-          console.log('[ParameterStore] Pre-fetch complete');
+          process.env.NODE_ENV != "production" &&
+            console.log("[ParameterStore] Pre-fetch complete");
         }
 
         setIsInitialized(true);
       } catch (error) {
-        const err = error instanceof Error ? error : new Error('Failed to initialize Parameter Store');
+        const err =
+          error instanceof Error
+            ? error
+            : new Error("Failed to initialize Parameter Store");
         setInitError(err);
-        console.error('[ParameterStore] Initialization failed:', err);
+        console.error("[ParameterStore] Initialization failed:", err);
       } finally {
         setIsInitializing(false);
       }
@@ -107,11 +132,14 @@ export function ParameterStoreProvider({
   }, [config, prefetchKeys]);
 
   const getParameter = useCallback(
-    async (key: ParameterKey, options?: ParameterFetchOptions): Promise<string> => {
+    async (
+      key: ParameterKey,
+      options?: ParameterFetchOptions
+    ): Promise<string> => {
       if (!isInitialized) {
         throw new ParameterStoreError(
-          'Parameter Store not initialized yet',
-          'NOT_INITIALIZED'
+          "Parameter Store not initialized yet",
+          "NOT_INITIALIZED"
         );
       }
       return parameterStore.getParameter(key, options);
@@ -120,11 +148,14 @@ export function ParameterStoreProvider({
   );
 
   const getParameters = useCallback(
-    async (keys: ParameterKey[], options?: ParameterFetchOptions): Promise<Record<string, string>> => {
+    async (
+      keys: ParameterKey[],
+      options?: ParameterFetchOptions
+    ): Promise<Record<string, string>> => {
       if (!isInitialized) {
         throw new ParameterStoreError(
-          'Parameter Store not initialized yet',
-          'NOT_INITIALIZED'
+          "Parameter Store not initialized yet",
+          "NOT_INITIALIZED"
         );
       }
       return parameterStore.getParameters(keys, options);
@@ -161,9 +192,13 @@ export function ParameterStoreProvider({
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="max-w-md p-6 bg-red-50 border border-red-200 rounded-lg">
-          <h2 className="text-red-800 text-xl font-bold mb-2">Initialization Error</h2>
+          <h2 className="text-red-800 text-xl font-bold mb-2">
+            Initialization Error
+          </h2>
           <p className="text-red-600 mb-4">{initError.message}</p>
-          <p className="text-sm text-red-500">Check your AWS credentials and permissions.</p>
+          <p className="text-sm text-red-500">
+            Check your AWS credentials and permissions.
+          </p>
         </div>
       </div>
     );
@@ -188,7 +223,7 @@ export function useParameterStoreContext(): ParameterStoreContextValue {
 
   if (!context) {
     throw new Error(
-      'useParameterStoreContext must be used within ParameterStoreProvider'
+      "useParameterStoreContext must be used within ParameterStoreProvider"
     );
   }
 

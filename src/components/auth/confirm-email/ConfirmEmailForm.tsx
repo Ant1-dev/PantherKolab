@@ -1,91 +1,75 @@
-'use client'
+"use client";
 
-import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/components/contexts/AuthContext";
 
 export function ConfirmEmailForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const email = searchParams.get('email') || '';
+  const email = searchParams.get("email") || "";
 
-  const [confirmationCode, setConfirmationCode] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isResending, setIsResending] = useState(false);
-  const [resendSuccess, setResendSuccess] = useState(false);
-
+  const [code, setCode] = useState("");
+  const [success, setSuccess] = useState("");
+  const {
+    verify,
+    resendVerificationCode,
+    error,
+    resendSuccess,
+    loading,
+    resending,
+    setError,
+  } = useAuth();
   const handleSubmit = async () => {
     // Clear previous errors
-    setError('');
+    setError("");
 
     // Validation
-    if (!confirmationCode || confirmationCode.length !== 6) {
-      setError('Please enter a valid 6-digit confirmation code');
+    if (!code || code.length !== 6) {
+      setError("Please enter a valid 6-digit confirmation code");
       return;
     }
 
     if (!email) {
-      setError('Email not found. Please sign up again.');
+      setError("Email not found. Please sign up again.");
       return;
     }
 
-    setIsLoading(true);
-
     try {
-      // TODO: Implement actual Cognito confirmation
-      // const result = await confirmSignUp({ username: email, confirmationCode });
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // On success, redirect to login or dashboard
-      router.push('/auth/login?verified=true');
+      await verify({ email, code });
+      setSuccess("Email verified! Redirecting to login...");
+      setTimeout(() => {
+        router.push("/auth/login");
+      }, 2000);
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message || 'Invalid confirmation code. Please try again.');
-      } else {
-        setError('Invalid confirmation code. Please try again.');
-      }
-    } finally {
-      setIsLoading(false);
+      // Error is already set in context
+      console.error("Verification error:", err);
     }
   };
 
   const handleResendCode = async () => {
     if (!email) {
-      setError('Email not found. Please sign up again.');
+      setError("Email not found. Please sign up again.");
       return;
     }
 
-    setIsResending(true);
-    setError('');
-    setResendSuccess(false);
+    setError("");
+    setSuccess("");
 
     try {
-      // TODO: Implement actual Cognito resend code
-      // await resendSignUpCode({ username: email });
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      setResendSuccess(true);
-      setTimeout(() => setResendSuccess(false), 5000); // Hide success message after 5s
+      await resendVerificationCode(email);
+      setSuccess("Verification code resent to your email");
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message || 'Failed to resend code. Please try again.');
-      } else {
-        setError('Failed to resend code. Please try again.');
-      }
-    } finally {
-      setIsResending(false);
+      // Error is already set in context
+      console.error("Resend error:", err);
     }
   };
 
   const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, ''); // Only allow digits
+    const value = e.target.value.replace(/\D/g, ""); // Only allow digits
     if (value.length <= 6) {
-      setConfirmationCode(value);
-      setError(''); // Clear error on typing
+      setCode(value);
+      setError(""); // Clear error on typing
     }
   };
 
@@ -100,79 +84,82 @@ export function ConfirmEmailForm() {
           We sent a verification code to
         </p>
         <p className="mt-1 text-sky-600 text-base font-bold font-['Bitter']">
-          {email || 'your email'}
+          {email || "your email"}
         </p>
       </div>
 
       {/* Confirmation Code Input */}
       <div className="w-full">
         <label
-          htmlFor="confirmationCode"
+          htmlFor="code"
           className="text-neutral-800 text-sm font-semibold font-['Bitter']"
         >
           Confirmation Code <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
-          id="confirmationCode"
-          name="confirmationCode"
-          value={confirmationCode}
+          id="code"
+          name="code"
+          value={code}
           onChange={handleCodeChange}
           placeholder="Enter 6-digit code"
           maxLength={6}
-          disabled={isLoading}
+          disabled={loading}
           className={`w-full h-12 px-4 mt-2 mb-2 bg-white rounded-lg border ${
-            error ? 'border-red-500' : 'border-gray-200'
+            error ? "border-red-500" : "border-gray-200"
           } text-zinc-600 font-semibold font-['Bitter'] focus:outline-none focus:border-sky-600 disabled:bg-gray-100 disabled:cursor-not-allowed ${
-            confirmationCode ? 'text-2xl tracking-widest text-center' : 'text-sm text-left'
+            code ? "text-2xl tracking-widest text-left" : "text-sm text-left"
           }`}
         />
-        {error && (
-          <p className="text-red-500 text-xs mt-1">{error}</p>
-        )}
-        {resendSuccess && (
-          <p className="text-green-600 text-xs mt-1">
-            ✓ Verification code sent successfully!
-          </p>
+        {error.length > 0 && (
+          <div className="w-80 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-800 text-sm font-semibold font-['Bitter']">
+              {error}
+            </p>
+          </div>
         )}
       </div>
 
       {/* Resend Code Link */}
       <div className="w-full">
         <p className="text-zinc-600 text-sm font-semibold font-['Bitter']">
-          Didn&apos;t receive the code?{' '}
+          Didn&apos;t receive the code?{" "}
           <button
             type="button"
             onClick={handleResendCode}
-            disabled={isResending || isLoading}
-            className="text-sky-600 font-bold hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={resending || loading}
+            className="text-sky-600 font-bold hover:underline disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
           >
-            {isResending ? 'Resending...' : 'Resend Code'}
+            {resending ? "Resending..." : "Resend Code"}
           </button>
         </p>
       </div>
-
+      {(success || resendSuccess) && (
+        <div className="rounded-md bg-green-50 p-4">
+          <p className="text-sm text-green-800">{success}</p>
+        </div>
+      )}
       {/* Confirm Button */}
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={isLoading || confirmationCode.length !== 6}
+        disabled={loading || code.length !== 6}
         className="w-full h-12 bg-yellow-500 rounded-lg flex items-center justify-center text-sky-900 text-base font-semibold font-['Bitter'] hover:bg-yellow-600 transition-colors cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed"
       >
-        {isLoading ? (
+        {loading ? (
           <span className="flex items-center gap-2">
             <span className="animate-spin">⏳</span>
             Confirming...
           </span>
         ) : (
-          'Confirm Email'
+          "Confirm Email"
         )}
       </button>
 
       {/* Back to Login */}
       <div className="w-full text-center">
         <span className="text-neutral-800 text-sm font-semibold font-['Bitter']">
-          Wrong email?{' '}
+          Wrong email?{" "}
         </span>
         <a
           href="/auth/signup"

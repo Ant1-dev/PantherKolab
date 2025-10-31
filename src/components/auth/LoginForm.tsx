@@ -121,7 +121,7 @@ export function LoginForm() {
           Don&apos;t have an account?
         </span>
         <a
-          href="/signup"
+          href="/auth/signup"
           className="justify-start text-sky-600 text-sm font-semibold font-['Bitter'] hover:underline cursor-pointer"
         >
           Sign up

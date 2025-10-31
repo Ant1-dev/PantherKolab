@@ -1,17 +1,16 @@
-"use client";
 import { Suspense } from "react";
-import { ConfirmEmailForm } from "@/components/auth/confirm-email";
+import { ForgotPasswordForm } from "@/components/auth/forgot-password";
 import * as authStyles from "@/components/auth/auth.style";
 
-function ConfirmEmailContent() {
+function ForgotPasswordContent() {
   return (
     <div
       className="w-full h-screen relative bg-sky-600 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] overflow-hidden"
       style={authStyles.root}
     >
-      {/* Right side - Confirmation form */}
+      {/* Right side - Forgot password form */}
       <div className="w-1/2 h-full px-16 py-24 right-0 top-0 absolute bg-gray-50 inline-flex flex-col items-center overflow-hidden gap-y-4">
-        <ConfirmEmailForm />
+        <ForgotPasswordForm />
         <div className="text-center text-zinc-600 text-sm font-bold font-['Bitter']">
           Powered by FIU Students, for FIU students
         </div>
@@ -34,7 +33,7 @@ function ConfirmEmailContent() {
   );
 }
 
-export default function ConfirmEmail() {
+export default function ForgotPassword() {
   return (
     <Suspense
       fallback={
@@ -45,7 +44,7 @@ export default function ConfirmEmail() {
         </div>
       }
     >
-      <ConfirmEmailContent />
+      <ForgotPasswordContent />
     </Suspense>
   );
 }

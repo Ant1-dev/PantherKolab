@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/components/contexts/AuthContext';
 import * as authStyles from '../auth.style';
 
 export function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get('email') || '';
+  const { confirmResetPassword, error, loading, setError } = useAuth();
 
   const [formData, setFormData] = useState({
     confirmationCode: '',
@@ -15,10 +17,10 @@ export function ResetPasswordForm() {
     confirmPassword: '',
   });
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   // Password validation checks
   const passwordRequirements = {
@@ -58,9 +60,10 @@ export function ResetPasswordForm() {
     }
 
     // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+    if (localErrors[name]) {
+      setLocalErrors(prev => ({ ...prev, [name]: '' }));
     }
+    setError('');
   };
 
   const validateForm = () => {
@@ -82,36 +85,29 @@ export function ResetPasswordForm() {
       newErrors.confirmPassword = 'Passwords do not match';
     }
 
-    setErrors(newErrors);
+    setLocalErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    setIsLoading(true);
-
     try {
-      // TODO: Implement actual Cognito password reset confirmation
-      // await confirmResetPassword({
-      //   username: email,
-      //   confirmationCode: formData.confirmationCode,
-      //   newPassword: formData.newPassword
-      // });
+      await confirmResetPassword({
+        email,
+        code: formData.confirmationCode,
+        newPassword: formData.newPassword,
+      });
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      setSuccess(true);
 
-      // On success, redirect to login
-      router.push('/auth/login?reset=success');
+      // On success, redirect to login after 2 seconds
+      setTimeout(() => {
+        router.push('/auth/login?reset=success');
+      }, 2000);
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setErrors({ general: err.message || 'Failed to reset password. Please try again.' });
-      } else {
-        setErrors({ general: 'Failed to reset password. Please try again.' });
-      }
-    } finally {
-      setIsLoading(false);
+      // Error is already set in context
+      console.error('Reset password error:', err);
     }
   };
 
@@ -130,10 +126,19 @@ export function ResetPasswordForm() {
         </p>
       </div>
 
+      {/* Success Message */}
+      {success && (
+        <div className="w-full p-4 bg-green-50 border border-green-200 rounded-lg">
+          <p className="text-green-600 text-sm font-semibold">
+            Password reset successful! Redirecting to login...
+          </p>
+        </div>
+      )}
+
       {/* General Error */}
-      {errors.general && (
+      {error && (
         <div className="w-full p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-600 text-sm font-semibold">{errors.general}</p>
+          <p className="text-red-600 text-sm font-semibold">{error}</p>
         </div>
       )}
 
@@ -153,15 +158,15 @@ export function ResetPasswordForm() {
           onChange={handleChange}
           placeholder="Enter 6-digit code"
           maxLength={6}
-          disabled={isLoading}
+          disabled={loading || success}
           className={`w-full h-12 px-4 mt-2 mb-2 bg-white rounded-lg border ${
-            errors.confirmationCode ? 'border-red-500' : 'border-gray-200'
+            localErrors.confirmationCode ? 'border-red-500' : 'border-gray-200'
           } text-zinc-600 font-semibold font-['Bitter'] focus:outline-none focus:border-sky-600 disabled:bg-gray-100 disabled:cursor-not-allowed ${
-            formData.confirmationCode ? 'text-2xl tracking-widest text-center' : 'text-sm text-left'
+            formData.confirmationCode ? 'text-2xl tracking-widest text-left' : 'text-sm text-left'
           }`}
         />
-        {errors.confirmationCode && (
-          <p className="text-red-500 text-xs mt-1">{errors.confirmationCode}</p>
+        {localErrors.confirmationCode && (
+          <p className="text-red-500 text-xs mt-1">{localErrors.confirmationCode}</p>
         )}
       </div>
 
@@ -181,9 +186,9 @@ export function ResetPasswordForm() {
             value={formData.newPassword}
             onChange={handleChange}
             placeholder="Enter new password"
-            disabled={isLoading}
+            disabled={loading || success}
             className={`w-full h-12 px-4 pr-12 mt-2 mb-2 bg-white rounded-lg border ${
-              errors.newPassword ? 'border-red-500' : 'border-gray-200'
+              localErrors.newPassword ? 'border-red-500' : 'border-gray-200'
             } text-zinc-600 text-sm font-semibold font-['Bitter'] focus:outline-none focus:border-sky-600 disabled:bg-gray-100 disabled:cursor-not-allowed`}
           />
           <button
@@ -254,9 +259,9 @@ export function ResetPasswordForm() {
             value={formData.confirmPassword}
             onChange={handleChange}
             placeholder="Re-enter new password"
-            disabled={isLoading}
+            disabled={loading || success}
             className={`w-full h-12 px-4 pr-12 mt-2 mb-2 bg-white rounded-lg border ${
-              errors.confirmPassword ? 'border-red-500' : 'border-gray-200'
+              localErrors.confirmPassword ? 'border-red-500' : 'border-gray-200'
             } text-zinc-600 text-sm font-semibold font-['Bitter'] focus:outline-none focus:border-sky-600 disabled:bg-gray-100 disabled:cursor-not-allowed`}
           />
           <button
@@ -267,8 +272,8 @@ export function ResetPasswordForm() {
             {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
           </button>
         </div>
-        {errors.confirmPassword && (
-          <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>
+        {localErrors.confirmPassword && (
+          <p className="text-red-500 text-xs mt-1">{localErrors.confirmPassword}</p>
         )}
       </div>
 
@@ -276,14 +281,16 @@ export function ResetPasswordForm() {
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={isLoading || formData.confirmationCode.length !== 6 || !allRequirementsMet || formData.newPassword !== formData.confirmPassword}
+        disabled={loading || success || formData.confirmationCode.length !== 6 || !allRequirementsMet || formData.newPassword !== formData.confirmPassword}
         className="w-full h-12 bg-yellow-500 rounded-lg flex items-center justify-center text-sky-900 text-base font-semibold font-['Bitter'] hover:bg-yellow-600 transition-colors cursor-pointer disabled:bg-gray-300 disabled:cursor-not-allowed"
       >
-        {isLoading ? (
+        {loading ? (
           <span className="flex items-center gap-2">
             <span className="animate-spin">⏳</span>
             Resetting Password...
           </span>
+        ) : success ? (
+          'Password Reset!'
         ) : (
           'Reset Password'
         )}

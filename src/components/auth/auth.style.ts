@@ -12,24 +12,23 @@ export const decorativePaws = {
   backgroundSize: "contain",
   backgroundPosition: "center",
   backgroundRepeat: "no-repeat",
-  opacity: 0.05
 };
 
 export const passwordStrength = {
   weak: {
-    backgroundColor: 'var(--password-weak)',
-    color: 'var(--password-weak)'
+    backgroundColor: "var(--password-weak)",
+    color: "var(--password-weak)",
   },
   medium: {
-    backgroundColor: 'var(--password-medium)',
-    color: 'var(--password-medium)'
+    backgroundColor: "var(--password-medium)",
+    color: "var(--password-medium)",
   },
   strong: {
-    backgroundColor: 'var(--password-strong)',
-    color: 'var(--password-strong)'
+    backgroundColor: "var(--password-strong)",
+    color: "var(--password-strong)",
   },
   empty: {
-    backgroundColor: 'var(--password-empty)',
-    color: 'var(--password-empty)'
-  }
+    backgroundColor: "var(--password-empty)",
+    color: "var(--password-empty)",
+  },
 };
