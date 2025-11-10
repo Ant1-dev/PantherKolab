@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * AWS Parameter Store Client
  *
@@ -258,8 +259,6 @@ export class ParameterStoreClient {
       region: this.config.region,
       environment: this.config.environment,
       prefix: this.config.prefix,
-      accessKeyId: '***',
-      secretAccessKey: '***',
     };
   }
 }
