@@ -50,29 +50,41 @@ export function ConversationList({
   };
 
   return (
-    <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+    <div className="w-96 bg-white flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold text-sky-900">Messages</h2>
-          {onCreateConversation && (
-            <button
-              onClick={onCreateConversation}
-              className="w-8 h-8 rounded-full bg-sky-600 text-white hover:bg-sky-700 flex items-center justify-center"
-              aria-label="New conversation"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="currentColor"
-                className="w-5 h-5"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-            </button>
-          )}
+        <h1 className="text-2xl font-bold text-gray-900 mb-4">PantherKolab</h1>
+
+        {/* Search */}
+        <div className="relative mb-4">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+            stroke="currentColor"
+            className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search messages..."
+            className="w-full pl-9 pr-3 py-2 bg-gray-50 border-0 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200">
+          <button className="flex-1 pb-2 text-sm font-medium text-gray-900 border-b-2 border-yellow-500">
+            All
+          </button>
+          <button className="flex-1 pb-2 text-sm font-medium text-gray-600 hover:text-gray-900">
+            Groups
+          </button>
+          <button className="flex-1 pb-2 text-sm font-medium text-gray-600 hover:text-gray-900">
+            DMs
+          </button>
         </div>
       </div>
 
@@ -87,45 +99,39 @@ export function ConversationList({
             </div>
           </div>
         ) : (
-          conversations.map((conversation) => (
-            <button
-              key={conversation.conversationId}
-              onClick={() => onSelectConversation(conversation.conversationId)}
-              className={`w-full p-4 flex items-start gap-3 hover:bg-gray-50 transition-colors border-b border-gray-100 ${
-                activeConversationId === conversation.conversationId ? 'bg-sky-50' : ''
-              }`}
-            >
-              {/* Avatar */}
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 rounded-full bg-sky-600 text-white flex items-center justify-center font-bold text-lg">
-                  {conversation.type === 'GROUP' ? '👥' : conversation.name.charAt(0).toUpperCase()}
-                </div>
-              </div>
+          conversations.map((conversation) => {
+            const initials = conversation.name
+              .split(' ')
+              .map(word => word[0])
+              .join('')
+              .toUpperCase()
+              .substring(0, 3);
 
-              {/* Content */}
-              <div className="flex-1 min-w-0 text-left">
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="font-semibold text-gray-900 truncate">{conversation.name}</h3>
-                  {conversation.lastMessageTime && (
-                    <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
-                      {formatTime(conversation.lastMessageTime)}
-                    </span>
-                  )}
+            return (
+              <button
+                key={conversation.conversationId}
+                onClick={() => onSelectConversation(conversation.conversationId)}
+                className={`w-full p-4 flex items-start gap-3 hover:bg-gray-50 transition-colors ${
+                  activeConversationId === conversation.conversationId ? 'bg-blue-50' : ''
+                }`}
+              >
+                {/* Avatar */}
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+                    {initials}
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600 truncate">
+                {/* Content */}
+                <div className="flex-1 min-w-0 text-left">
+                  <h3 className="font-bold text-gray-900 text-sm mb-0.5">{conversation.name}</h3>
+                  <p className="text-xs text-gray-600 truncate">
                     {conversation.lastMessage || 'No messages yet'}
                   </p>
-                  {conversation.unreadCount && conversation.unreadCount > 0 && (
-                    <span className="ml-2 flex-shrink-0 w-5 h-5 bg-sky-600 text-white text-xs rounded-full flex items-center justify-center font-semibold">
-                      {conversation.unreadCount > 9 ? '9+' : conversation.unreadCount}
-                    </span>
-                  )}
                 </div>
-              </div>
-            </button>
-          ))
+              </button>
+            );
+          })
         )}
       </div>
     </div>
