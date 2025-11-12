@@ -13,7 +13,11 @@ import { useCallback, useMemo, useState } from "react";
 import { useConversations } from "@/hooks/useConversations";
 import { useMessages } from "@/hooks/useMessages";
 import { useAuth } from "@/components/contexts/AuthContext";
-import type { Message, Conversation, CreateConversationInput } from "@/types/database";
+import type {
+  Message,
+  Conversation,
+  CreateConversationInput,
+} from "@/types/database";
 import {
   MessageSquare,
   Phone,
@@ -95,7 +99,8 @@ export default function MessagesTestPage() {
   const handleSendMessage = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!activeConversationId || !currentUserId || !messageInput.trim()) return;
+      if (!activeConversationId || !currentUserId || !messageInput.trim())
+        return;
 
       try {
         await realSendMessage(messageInput, "TEXT");
@@ -139,7 +144,12 @@ export default function MessagesTestPage() {
 
     try {
       await createConversation(input);
-      setNewConvModal({ isOpen: false, name: "", type: "GROUP", participants: "" });
+      setNewConvModal({
+        isOpen: false,
+        name: "",
+        type: "GROUP",
+        participants: "",
+      });
     } catch (error) {
       console.error("Failed to create conversation:", error);
     }
@@ -214,14 +224,15 @@ export default function MessagesTestPage() {
 
         <div className="flex-1 overflow-y-auto">
           {filteredConversations.map((conversation) => {
-            const initials = conversation.name
-              ?.substring(0, 3)
-              .toUpperCase() || "???";
+            const initials =
+              conversation.name?.substring(0, 3).toUpperCase() || "???";
 
             return (
               <button
                 key={conversation.conversationId}
-                onClick={() => handleSelectConversation(conversation.conversationId)}
+                onClick={() =>
+                  handleSelectConversation(conversation.conversationId)
+                }
                 className={`w-full p-4 flex items-start space-x-3 hover:bg-gray-50 transition-colors ${
                   activeConversationId === conversation.conversationId
                     ? "bg-blue-50 border-l-4 border-blue-600"
@@ -252,7 +263,8 @@ export default function MessagesTestPage() {
             <div className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
-                  {activeConversation.name?.substring(0, 3).toUpperCase() || "???"}
+                  {activeConversation.name?.substring(0, 3).toUpperCase() ||
+                    "???"}
                 </div>
                 <div>
                   <h2 className="font-semibold text-gray-900">
@@ -285,14 +297,30 @@ export default function MessagesTestPage() {
                 return (
                   <div
                     key={message.messageId}
-                    className={`flex ${isCurrentUser ? "justify-end" : "justify-start"}`}
+                    className={`flex ${
+                      isCurrentUser ? "justify-end" : "justify-start"
+                    }`}
                   >
-                    <div className={`flex items-start space-x-2 max-w-md ${isCurrentUser ? "flex-row-reverse space-x-reverse" : ""}`}>
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${isCurrentUser ? "bg-yellow-500" : "bg-blue-600"}`}>
+                    <div
+                      className={`flex items-start space-x-2 max-w-md ${
+                        isCurrentUser ? "flex-row-reverse space-x-reverse" : ""
+                      }`}
+                    >
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${
+                          isCurrentUser ? "bg-yellow-500" : "bg-blue-600"
+                        }`}
+                      >
                         {message.senderId.substring(0, 2).toUpperCase()}
                       </div>
                       <div>
-                        <div className={`px-4 py-2 rounded-2xl ${isCurrentUser ? "bg-blue-600 text-white" : "bg-white text-gray-900"}`}>
+                        <div
+                          className={`px-4 py-2 rounded-2xl ${
+                            isCurrentUser
+                              ? "bg-blue-600 text-white"
+                              : "bg-white text-gray-900"
+                          }`}
+                        >
                           <p className="text-sm">{message.content}</p>
                         </div>
                         <p className="text-xs text-gray-500 mt-1 px-2">
@@ -309,7 +337,10 @@ export default function MessagesTestPage() {
             </div>
 
             <div className="bg-white border-t border-gray-200 p-4">
-              <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
+              <form
+                onSubmit={handleSendMessage}
+                className="flex items-center space-x-2"
+              >
                 <input
                   type="text"
                   value={messageInput}
@@ -476,7 +507,12 @@ export default function MessagesTestPage() {
               </h2>
               <button
                 onClick={() =>
-                  setNewConvModal({ isOpen: false, name: "", type: "GROUP", participants: "" })
+                  setNewConvModal({
+                    isOpen: false,
+                    name: "",
+                    type: "GROUP",
+                    participants: "",
+                  })
                 }
                 className="p-1 text-gray-400 hover:text-gray-600"
               >
@@ -506,7 +542,9 @@ export default function MessagesTestPage() {
                 </label>
                 <div className="flex space-x-4">
                   <button
-                    onClick={() => setNewConvModal({ ...newConvModal, type: "GROUP" })}
+                    onClick={() =>
+                      setNewConvModal({ ...newConvModal, type: "GROUP" })
+                    }
                     className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
                       newConvModal.type === "GROUP"
                         ? "bg-blue-600 text-white"
@@ -516,7 +554,9 @@ export default function MessagesTestPage() {
                     Group
                   </button>
                   <button
-                    onClick={() => setNewConvModal({ ...newConvModal, type: "DM" })}
+                    onClick={() =>
+                      setNewConvModal({ ...newConvModal, type: "DM" })
+                    }
                     className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
                       newConvModal.type === "DM"
                         ? "bg-blue-600 text-white"
@@ -536,7 +576,10 @@ export default function MessagesTestPage() {
                   type="text"
                   value={newConvModal.participants}
                   onChange={(e) =>
-                    setNewConvModal({ ...newConvModal, participants: e.target.value })
+                    setNewConvModal({
+                      ...newConvModal,
+                      participants: e.target.value,
+                    })
                   }
                   placeholder="user1, user2, user3"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -546,11 +589,16 @@ export default function MessagesTestPage() {
               <div className="flex space-x-3 pt-2">
                 <button
                   onClick={() =>
-                    setNewConvModal({ isOpen: false, name: "", type: "GROUP", participants: "" })
+                    setNewConvModal({
+                      isOpen: false,
+                      name: "",
+                      type: "GROUP",
+                      participants: "",
+                    })
                   }
                   className="flex-1 py-2 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
                 >
-                  Cancel
+                  Cancell
                 </button>
                 <button
                   onClick={handleCreateConversation}
