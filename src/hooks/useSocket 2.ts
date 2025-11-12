@@ -7,7 +7,6 @@
 
 import { useEffect, useState } from "react";
 import { socket } from "@/lib/socket-client";
-import { useAuth } from "@/components/contexts/AuthContext";
 
 type ConnectionStatus = "connected" | "connecting" | "disconnected";
 
@@ -37,7 +36,6 @@ interface UseSocketReturn {
  * ```
  */
 export function useSocket(): UseSocketReturn {
-  const { getAccessToken } = useAuth();
   const [status, setStatus] = useState<ConnectionStatus>("disconnected");
   const [error, setError] = useState<Error | null>(null);
 
@@ -63,18 +61,8 @@ export function useSocket(): UseSocketReturn {
     socket.on("status-change", handleStatusChange);
     socket.on("error", handleError);
 
-    // Connect on mount with auth token
-    const connectWithAuth = async () => {
-      try {
-        const token = await getAccessToken();
-        await socket.connect(token || undefined);
-      } catch (err) {
-        console.error("Failed to connect socket:", err);
-        setError(err instanceof Error ? err : new Error("Failed to connect"));
-      }
-    };
-
-    connectWithAuth();
+    // Connect on mount
+    socket.connect();
 
     // Cleanup on unmount
     return () => {
@@ -83,7 +71,7 @@ export function useSocket(): UseSocketReturn {
       // Note: We don't disconnect here because other components might be using the socket
       // The socket will disconnect when the app unmounts or when explicitly called
     };
-  }, [getAccessToken]);
+  }, []);
 
   // Get current connection state
   const isConnected = socket.isConnected;

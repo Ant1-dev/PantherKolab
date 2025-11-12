@@ -52,9 +52,9 @@ class SocketClient {
     }
 
     /**
-     * Connect to the Socket.IO server
+     * Connect to the Socket.IO server with auth token
      */
-    connect(): void {
+    async connect(token?: string): Promise<void> {
         if (typeof window === "undefined") {
             console.warn("Socket.IO client can only be used in the browser");
             return;
@@ -65,8 +65,9 @@ class SocketClient {
             return;
         }
 
-        if (this.socket) {
-            // Already have a socket instance, just reconnect
+        // If we already have a socket, update auth and reconnect
+        if (this.socket && token) {
+            this.socket.auth = { token };
             this.socket.connect();
             return;
         }
@@ -81,6 +82,7 @@ class SocketClient {
         this.reconnectAttempts = 0;
 
         this.socket = io(serverUrl, {
+            auth: token ? { token } : {},
             transports: ["websocket", "polling"],
             reconnection: true,
             reconnectionDelay: 1000,

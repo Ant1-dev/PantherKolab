@@ -11,7 +11,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSocket } from "./useSocket";
-import { useAuth } from "@/components/contexts/AuthContext";
 import type { Conversation, CreateConversationInput } from "@/types/database";
 
 interface UseConversationsReturn {
@@ -41,7 +40,6 @@ interface UseConversationsReturn {
  */
 export function useConversations(): UseConversationsReturn {
   const { socket, isConnected } = useSocket();
-  const { getAccessToken } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -55,17 +53,9 @@ export function useConversations(): UseConversationsReturn {
     setError(null);
 
     try {
-      const token = await getAccessToken();
-      if (!token) {
-        throw new Error("Not authenticated");
-      }
-
       const response = await fetch("/api/conversations", {
         method: "GET",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-        },
-        credentials: "include",
+        credentials: "include", // Include cookies for auth
       });
 
       if (!response.ok) {
@@ -96,7 +86,7 @@ export function useConversations(): UseConversationsReturn {
     } finally {
       setLoading(false);
     }
-  }, [getAccessToken]);
+  }, []);
 
   /**
    * Handle conversation updated event (real-time update)
@@ -163,16 +153,10 @@ export function useConversations(): UseConversationsReturn {
   const createConversation = useCallback(
     async (input: CreateConversationInput): Promise<Conversation> => {
       try {
-        const token = await getAccessToken();
-        if (!token) {
-          throw new Error("Not authenticated");
-        }
-
         const response = await fetch("/api/conversations", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
           },
           credentials: "include",
           body: JSON.stringify(input),
@@ -198,7 +182,7 @@ export function useConversations(): UseConversationsReturn {
         throw error;
       }
     },
-    [getAccessToken]
+    []
   );
 
   /**
