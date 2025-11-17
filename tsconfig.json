@@ -13,6 +13,7 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "types": ["node", "react"],
     "plugins": [
       {
         "name": "next"
@@ -22,6 +23,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "jest.config.js", "server.ts"],
+  "exclude": ["node_modules", "__tests__old", "backend_old", "src_old", "**/EXAMPLE_USAGE.tsx", "src/utils/validateForm.ts"]
 }

@@ -3,6 +3,12 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Password Strength Colors */
+  --password-weak: #ef4444;      /* red-500 */
+  --password-medium: #eab308;    /* yellow-500 */
+  --password-strong: #22c55e;    /* green-500 */
+  --password-empty: #e5e7eb;     /* gray-200 */
 }
 
 @theme inline {
