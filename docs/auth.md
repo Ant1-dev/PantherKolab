@@ -2,7 +2,7 @@
 
 ## Overview
 
-AWS Amplify + Cognito for auth, DynamoDB for user profiles. All auth logic is in `AuthContext`. Configuration is managed through AWS Parameter Store instead of `.env` files.
+AWS Amplify + Cognito for auth, DynamoDB for user profiles. All auth logic is in `AuthContext`. Configuration is managed through `.env.local` files.
 
 ---
 
@@ -11,21 +11,19 @@ AWS Amplify + Cognito for auth, DynamoDB for user profiles. All auth logic is in
 ### 1. Install Dependencies
 
 ```bash
-npm install aws-amplify @aws-sdk/client-dynamodb @aws-sdk/lib-dynamodb @aws-sdk/client-ssm aws-jwt-verify
+npm install aws-amplify @aws-sdk/client-dynamodb @aws-sdk/lib-dynamodb aws-jwt-verify
 ```
 
 ### 2. Environment Variables (`.env.local`)
 
-**Note:** The app is moving away from `.env` files to AWS Parameter Store for configuration management.
-
-Legacy environment variables (still supported):
+Required environment variables:
 ```bash
 NEXT_PUBLIC_COGNITO_USER_POOL_ID=your_pool_id
 NEXT_PUBLIC_COGNITO_CLIENT_ID=your_client_id
 NEXT_PUBLIC_AWS_REGION=your_region
 AWS_ACCESS_KEY_ID=your_key
 AWS_SECRET_ACCESS_KEY=your_secret
-DYNAMODB_TABLE_NAME=Users
+DYNAMODB_USERS_TABLE=PantherKolab-Users-dev
 ```
 
 ### 3. Wrap App with AuthProvider
@@ -228,9 +226,6 @@ src/
 ├── lib/
 │   ├── amplify/
 │   │   └── amplify-config.ts      # Amplify configuration
-│   ├── parameterStore/
-│   │   ├── index.ts               # Parameter Store client
-│   │   └── ParameterStoreContext.tsx  # Parameter Store context
 │   └── dynamodb/
 │       └── index.ts               # DynamoDB client
 │
@@ -260,8 +255,7 @@ src/
 │
 └── types/
     ├── AuthContextTypes.ts        # Auth type definitions
-    ├── database.ts                # Database type definitions
-    └── parameters.ts              # Parameter Store types
+    └── database.ts                # Database type definitions
 ```
 
 ---

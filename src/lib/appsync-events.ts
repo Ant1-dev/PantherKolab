@@ -102,17 +102,17 @@ function getAppSyncEndpoint(): string {
   }
 
   // Validate endpoint format
-  if (!endpoint.startsWith('http://') && !endpoint.startsWith('https://')) {
+  if (!endpoint.startsWith("http://") && !endpoint.startsWith("https://")) {
     console.warn(
-      '[AppSync] Warning: Endpoint should start with https:// ' +
-      `Current value: ${endpoint}`
+      "[AppSync] Warning: Endpoint should start with https:// " +
+        `Current value: ${endpoint}`
     );
   }
 
-  if (!endpoint.includes('/event')) {
+  if (!endpoint.includes("/event")) {
     console.warn(
-      '[AppSync] Warning: HTTP endpoint should end with /event for publishing. ' +
-      `Current endpoint: ${endpoint}`
+      "[AppSync] Warning: HTTP endpoint should end with /event for publishing. " +
+        `Current endpoint: ${endpoint}`
     );
   }
 
@@ -123,16 +123,16 @@ function getAppSyncEndpoint(): string {
  * Get AppSync API key from environment (if using API key auth)
  */
 function getAppSyncApiKey(): string | undefined {
-  const apiKey = process.env.APPSYNC_EVENT_API_KEY;
-  
+  const apiKey = process.env.APPSYNC_EVENT_API_ID;
+
   // Add validation and helpful error messages
-  if (apiKey && !apiKey.startsWith('da2-')) {
+  if (apiKey && !apiKey.startsWith("da2-")) {
     console.warn(
       '[AppSync] Warning: API key does not start with "da2-". ' +
-      'Make sure you are using the API Key, not the API ID.'
+        "Make sure you are using the API Key, not the API ID."
     );
   }
-  
+
   return apiKey;
 }
 
@@ -204,19 +204,26 @@ function createHeaders(): HeadersInit {
   const apiKey = getAppSyncApiKey();
   if (apiKey) {
     headers["x-api-key"] = apiKey;
-    console.log('[AppSync] Using API Key authentication (key prefix:', apiKey.substring(0, 8) + '...)');
+    console.log(
+      "[AppSync] Using API Key authentication (key prefix:",
+      apiKey.substring(0, 8) + "...)"
+    );
     return headers;
   }
 
   // If no API key, check for AWS credentials
   const credentials = getAwsCredentials();
   if (credentials) {
-    console.log('[AppSync] AWS credentials found, but IAM signing not yet implemented');
-    console.log('[AppSync] Note: IAM authentication requires additional implementation');
+    console.log(
+      "[AppSync] AWS credentials found, but IAM signing not yet implemented"
+    );
+    console.log(
+      "[AppSync] Note: IAM authentication requires additional implementation"
+    );
   } else {
     console.warn(
-      '[AppSync] No authentication configured! ' +
-      'Set APPSYNC_EVENT_API_KEY for API key auth or AWS credentials for IAM auth.'
+      "[AppSync] No authentication configured! " +
+        "Set APPSYNC_EVENT_API_ID for API key auth or AWS credentials for IAM auth."
     );
   }
 
@@ -309,7 +316,9 @@ async function publishWithRetry<T>(
 
       if (response.errors && response.errors.length > 0) {
         throw new Error(
-          `AppSync returned errors: ${response.errors.map((e) => e.message).join(", ")}`
+          `AppSync returned errors: ${response.errors
+            .map((e) => e.message)
+            .join(", ")}`
         );
       }
 
@@ -333,7 +342,9 @@ async function publishWithRetry<T>(
   }
 
   throw new Error(
-    `Failed to publish event to AppSync after ${retryConfig.maxRetries + 1} attempts. Last error: ${lastError?.message}`
+    `Failed to publish event to AppSync after ${
+      retryConfig.maxRetries + 1
+    } attempts. Last error: ${lastError?.message}`
   );
 }
 
