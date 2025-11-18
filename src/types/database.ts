@@ -138,6 +138,7 @@ export const TABLE_NAMES = {
   CONVERSATIONS: process.env.DYNAMODB_CONVERSATIONS_TABLE || 'PantherKolab-Conversations-dev',
   MESSAGES: process.env.DYNAMODB_MESSAGES_TABLE || 'PantherKolab-Messages-dev',
   GROUPS: process.env.DYNAMODB_GROUPS_TABLE || 'PantherKolab-Groups-dev',
+  CALLS: process.env.DYNAMODB_CALLS_TABLE || 'PantherKolab-CallSessions-dev',
 } as const
 
 /**
@@ -155,3 +156,65 @@ export const INDEX_NAMES = {
     CLASS_CODE: 'ClassCodeIndex',
   },
 } as const
+
+/**
+ * Call
+ * Table: PantherKolab-CallSessions-{env}
+ * Primary Key: sessionId (PK) + timestamp (SK)
+ */
+export interface Call {
+  sessionId: string              // UUID - Partition key
+  timestamp: string              // ISO timestamp - Sort key
+  chimeMeetingId: string         // AWS Chime Meeting ID
+  conversationId: string | null  // Conversation ID (null for direct calls)
+  callType: CallType             // DIRECT or GROUP
+  initiatedBy: string            // User ID who started the call
+  participants: CallParticipant[] // Array of call participants
+  status: CallStatus             // Current call status
+  startedAt: string | null       // ISO timestamp when call became active
+  endedAt: string | null         // ISO timestamp when call ended
+  createdAt: string              // ISO timestamp when call was created
+  duration: number | null        // Call duration in seconds
+}
+
+/**
+ * Call Participant
+ */
+export interface CallParticipant {
+  userId: string                 // User ID
+  attendeeId: string | null      // AWS Chime Attendee ID
+  joinedAt: string | null        // ISO timestamp when joined
+  leftAt: string | null          // ISO timestamp when left
+  status: 'RINGING' | 'JOINED' | 'LEFT' | 'REJECTED' // Participant status
+}
+
+/**
+ * Call Types
+ */
+export type CallType = 'DIRECT' | 'GROUP'
+
+/**
+ * Call Status
+ */
+export type CallStatus = 'RINGING' | 'ACTIVE' | 'ENDED' | 'MISSED' | 'REJECTED'
+
+/**
+ * Create Call Input
+ */
+export interface CreateCallInput {
+  callType: CallType
+  initiatedBy: string
+  participantIds: string[]
+  conversationId?: string
+}
+
+/**
+ * Incoming Call Data (Socket.IO event payload)
+ */
+export interface IncomingCallData {
+  sessionId: string
+  callerId: string
+  callerName: string
+  callType: CallType
+  conversationId?: string | null
+}
