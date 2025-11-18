@@ -15,8 +15,6 @@ import {
   authenticateSocket,
   getAuthenticatedUserId,
 } from "./src/lib/socket/socketAuthMiddleware.js";
-import { initializeCallSocket } from "@/lib/socket/callSocket.js";
-import { initializeMessageSocket } from "@/lib/socket/messageSocket.js";
 
 declare global {
   // attach io to global to allow access throughout the app
@@ -64,8 +62,14 @@ app.prepare().then(() => {
     socket.join(`user:${userId}`);
     console.log(`📱 User ${userId} joined room: user:${userId}`);
 
-    initializeMessageSocket(socket, io);
-    initializeCallSocket(socket, io);
+    //Dynamically importing these because we want to make sure the .env variables load first
+    //from dotenv()
+    import("@/lib/socket/callSocket.js").then((module) =>
+      module.initializeCallSocket(socket, io)
+    );
+    import("@/lib/socket/messageSocket.js").then((module) =>
+      module.initializeMessageSocket(socket, io)
+    );
 
     socket.on("disconnect", () => {
       console.log("Client disconnected:", socket.id);

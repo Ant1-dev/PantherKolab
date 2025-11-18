@@ -1,6 +1,7 @@
 "use client"
 
 import { User } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 
 interface ParticipantTileProps {
   name: string
@@ -8,7 +9,8 @@ interface ParticipantTileProps {
   isActiveSpeaker?: boolean
   isMuted?: boolean
   hasVideo?: boolean
-  videoElement?: HTMLVideoElement | null
+  tileId?: number
+  onVideoElementReady?: (tileId: number, element: HTMLVideoElement) => void
 }
 
 export function ParticipantTile({
@@ -17,7 +19,27 @@ export function ParticipantTile({
   isActiveSpeaker = false,
   isMuted = false,
   hasVideo = true,
+  tileId,
+  onVideoElementReady,
 }: ParticipantTileProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hasBoundTileRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Guard: Only bind if we have all required elements and haven't bound this tile yet
+    if (
+      hasVideo &&
+      tileId !== undefined &&
+      videoRef.current &&
+      onVideoElementReady &&
+      hasBoundTileRef.current !== tileId
+    ) {
+      onVideoElementReady(tileId, videoRef.current);
+      hasBoundTileRef.current = tileId;
+      console.log(`ParticipantTile: Bound tile ${tileId}`);
+    }
+  }, [hasVideo, tileId, onVideoElementReady]);
+
   return (
     <div
       className={`relative rounded-lg overflow-hidden bg-gradient-to-br from-[#003366] to-[#004080] aspect-video flex items-center justify-center transition-all ${
@@ -27,6 +49,7 @@ export function ParticipantTile({
       {/* Video or Avatar */}
       {hasVideo ? (
         <video
+          ref={videoRef}
           autoPlay
           playsInline
           muted={isLocal}

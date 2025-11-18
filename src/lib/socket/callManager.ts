@@ -1,8 +1,13 @@
-import { ChimeSDKMeetings } from "@aws-sdk/client-chime-sdk-meetings";
+import {
+  Attendee,
+  ChimeSDKMeetings,
+  Meeting,
+} from "@aws-sdk/client-chime-sdk-meetings";
 import { callService } from "@/services/callService";
 import type { CallType, Call } from "@/types/database";
 
 // Initialize AWS Chime SDK Meetings client
+
 const chime = new ChimeSDKMeetings({
   region: process.env.AWS_CHIME_REGION || process.env.AWS_REGION || "us-east-1",
   credentials: {
@@ -39,9 +44,9 @@ export const callManager = {
       );
     }
 
-    // For DIRECT calls, should have exactly 1 recipient
-    if (data.callType === "DIRECT" && data.participantIds.length !== 1) {
-      throw new Error("Direct calls must have exactly one recipient");
+    // For DIRECT calls, should have exactly 2 participants
+    if (data.callType === "DIRECT" && data.participantIds.length !== 2) {
+      throw new Error("Direct calls must have exactly two participants");
     }
 
     // For GROUP calls, require conversationId
@@ -73,8 +78,8 @@ export const callManager = {
     callerName: string;
   }): Promise<{
     call: Call;
-    meeting: any;
-    attendees: Record<string, any>;
+    meeting: Meeting;
+    attendees: Record<string, Attendee>;
   }> {
     try {
       // 1. Get call record
@@ -85,7 +90,9 @@ export const callManager = {
 
       // Verify call is still in RINGING state
       if (call.status !== "RINGING") {
-        throw new Error(`Call is not in ringing state. Current status: ${call.status}`);
+        throw new Error(
+          `Call is not in ringing state. Current status: ${call.status}`
+        );
       }
 
       // Verify recipient is actually a participant
@@ -152,8 +159,8 @@ export const callManager = {
         call: updatedCall!,
         meeting: meeting.Meeting,
         attendees: {
-          [data.callerId]: callerAttendee.Attendee,
-          [data.recipientId]: recipientAttendee.Attendee,
+          [data?.callerId]: callerAttendee?.Attendee as Attendee,
+          [data?.recipientId]: recipientAttendee?.Attendee as Attendee,
         },
       };
     } catch (error) {
@@ -188,9 +195,31 @@ export const callManager = {
   },
 
   /**
+   * Leave a call
+   */
+  async leaveCall(sessionId: string, userId: string): Promise<Call> {
+    const call = await callService.getCall(sessionId);
+    if (!call) {
+      throw new Error("Call not found");
+    }
+
+    // Update participant status
+    await callService.updateParticipantStatus(sessionId, userId, "LEFT");
+
+    // If all participants left, mark call as ENDED
+    const allLeft = call.participants.every(
+      (p) => p.status === "REJECTED" || p.status === "LEFT"
+    );
+
+    if (allLeft) {
+      await callService.updateCallStatus(sessionId, "ENDED");
+    }
+    return call;
+  },
+  /**
    * End an active call
    */
-  async endCall(sessionId: string): Promise<void> {
+  async endCall(sessionId: string): Promise<Call> {
     const call = await callService.getCall(sessionId);
     if (!call) {
       throw new Error("Call not found");
@@ -210,5 +239,6 @@ export const callManager = {
 
     // Update call status to ENDED
     await callService.endCall(sessionId);
+    return call;
   },
 };

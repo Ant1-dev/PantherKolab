@@ -18,10 +18,13 @@ export default function MeetingUITestPage() {
   const [callerName, setCallerName] = useState("");
   const [callerId, setCallerId] = useState("");
   const [sessionId, setSessionId] = useState("");
+  const [isCallInitiator, setIsCallInitiator] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [meetingData, setMeetingData] = useState<any>(null);
   const socketRef = useRef<Socket | null>(null);
 
   const auth = useAuth();
+  const localUserId = auth.user?.userId;
 
   useEffect(() => {
     auth.getAccessToken().then((token) => setAccessToken(token as string));
@@ -44,6 +47,7 @@ export default function MeetingUITestPage() {
       (data: { sessionId: string; recipientId: string }) => {
         console.log("Call is ringing. SessionId:", data.sessionId);
         setSessionId(data.sessionId);
+        setIsCallInitiator(true); // This user initiated the call
       }
     );
 
@@ -61,6 +65,7 @@ export default function MeetingUITestPage() {
         setCallerId(data.callerId);
         setCallerName(data.callerName);
         setCallType(data.callType as "DIRECT" | "GROUP");
+        setIsCallInitiator(false); // This user is receiving the call
         setShowIncomingCall(true);
       }
     );
@@ -110,6 +115,30 @@ export default function MeetingUITestPage() {
       setIsConnecting(false);
       alert("Call error: " + data.error);
     });
+
+    // Listen for call ended (when someone ends the call for everyone)
+    socketRef.current.on(
+      "call-ended",
+      (data: { sessionId: string; endedBy: string }) => {
+        console.log(`Call ended by ${data.endedBy}`);
+        setShowMeeting(false);
+        setShowIncomingCall(false);
+        setIsRinging(false);
+        setIsConnecting(false);
+        setMeetingData(null);
+        alert("Call has ended");
+      }
+    );
+
+    // Listen for participant left (when someone leaves without ending)
+    socketRef.current.on(
+      "participant-left",
+      (data: { sessionId: string; userId: string }) => {
+        console.log(`Participant ${data.userId} left the call`);
+        // In a real implementation, we would remove this participant from the UI
+        // For now, just log it
+      }
+    );
 
     return () => {
       socketRef.current?.disconnect();
@@ -246,8 +275,8 @@ export default function MeetingUITestPage() {
                     {isConnecting
                       ? "Connecting..."
                       : isRinging
-                        ? "Ringing..."
-                        : "Call test user 2"}
+                      ? "Ringing..."
+                      : "Call test user 2"}
                   </button>
                 </div>
               </div>
@@ -334,7 +363,24 @@ export default function MeetingUITestPage() {
           meetingSubtitle="Florida International University"
           participants={mockParticipants}
           activeSpeakerId="2" // Dr. Maria Rodriguez is speaking
-          onEndCall={() => setShowMeeting(false)}
+          isCallInitiator={isCallInitiator}
+          meeting={meetingData?.meeting}
+          attendee={localUserId ? meetingData?.attendees?.[localUserId] : undefined}
+          localUserId={localUserId}
+          onEndCall={() => {
+            // End call for everyone
+            socketRef.current?.emit("end-call", { sessionId });
+            setShowMeeting(false);
+            setIsRinging(false);
+            setIsConnecting(false);
+          }}
+          onLeaveCall={() => {
+            // Leave call but keep it active for others
+            socketRef.current?.emit("leave-call", { sessionId });
+            setShowMeeting(false);
+            setIsRinging(false);
+            setIsConnecting(false);
+          }}
           onSettingsClick={() => alert("Settings clicked")}
         />
       )}

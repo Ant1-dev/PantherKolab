@@ -81,13 +81,16 @@ export const callService = {
       })
     );
 
-    return result.Items?.[0] as Call || null;
+    return (result.Items?.[0] as Call) || null;
   },
 
   /**
    * Get call by exact sessionId and timestamp
    */
-  async getCallByKey(sessionId: string, timestamp: string): Promise<Call | null> {
+  async getCallByKey(
+    sessionId: string,
+    timestamp: string
+  ): Promise<Call | null> {
     const result = await dynamoDb.send(
       new GetCommand({
         TableName: TABLE_NAME,
@@ -238,9 +241,11 @@ export const callService = {
         TableName: TABLE_NAME,
         Key: { sessionId, timestamp: call.timestamp },
         UpdateExpression:
-          "SET #status = :status, endedAt = :endedAt, duration = :duration",
+          "SET #status = :status, #endedAt = :endedAt, #duration = :duration",
         ExpressionAttributeNames: {
           "#status": "status",
+          "#duration": "duration", // Added: duration is a reserved keyword
+          "#endedAt": "endedAt",
         },
         ExpressionAttributeValues: {
           ":status": "ENDED",

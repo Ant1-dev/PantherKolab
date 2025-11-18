@@ -1,6 +1,6 @@
 "use client"
 
-import { Mic, MicOff, Video, VideoOff, Users, UserPlus, MessageSquare, Phone } from 'lucide-react'
+import { Mic, MicOff, Video, VideoOff, Users, UserPlus, MessageSquare, Phone, LogOut } from 'lucide-react'
 
 interface MeetingControlsProps {
   isMuted: boolean
@@ -10,7 +10,9 @@ interface MeetingControlsProps {
   onToggleParticipants?: () => void
   onToggleChat?: () => void
   onInviteUsers?: () => void
+  isCallInitiator?: boolean
   onEndCall: () => void
+  onLeaveCall?: () => void
 }
 
 export function MeetingControls({
@@ -21,7 +23,9 @@ export function MeetingControls({
   onToggleParticipants,
   onToggleChat,
   onInviteUsers,
+  isCallInitiator,
   onEndCall,
+  onLeaveCall,
 }: MeetingControlsProps) {
   return (
     <div className="bg-white border-t border-gray-200 px-6 py-4">
@@ -103,16 +107,31 @@ export function MeetingControls({
           )}
         </div>
 
-        {/* Right Controls - End Call */}
-        <div>
-          <button
-            onClick={onEndCall}
-            className="px-6 py-4 rounded-lg bg-red-500 hover:bg-red-600 text-white flex items-center gap-2 transition-colors font-medium"
-            aria-label="End call"
-          >
-            <Phone className="w-5 h-5 rotate-[135deg]" />
-            <span>End</span>
-          </button>
+        {/* Right Controls - Leave/End Call */}
+        <div className="flex items-center gap-3">
+          {/* Leave Call Button - shown to all users */}
+          {onLeaveCall && (
+            <button
+              onClick={onLeaveCall}
+              className="px-6 py-4 rounded-lg bg-gray-600 hover:bg-gray-700 text-white flex items-center gap-2 transition-colors font-medium"
+              aria-label="Leave call"
+            >
+              <LogOut className="w-5 h-5" />
+              <span>Leave</span>
+            </button>
+          )}
+
+          {/* End Call Button - shown to call initiators only */}
+          {isCallInitiator && (
+            <button
+              onClick={onEndCall}
+              className="px-6 py-4 rounded-lg bg-red-500 hover:bg-red-600 text-white flex items-center gap-2 transition-colors font-medium"
+              aria-label="End call for everyone"
+            >
+              <Phone className="w-5 h-5 rotate-[135deg]" />
+              <span>End</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

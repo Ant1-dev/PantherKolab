@@ -1,5 +1,5 @@
 import { Socket, Server } from "socket.io";
-import { sendToUser } from "@/lib/socket/socketUtils";
+import { sendToUser, sendToUsers } from "@/lib/socket/socketUtils";
 import { getAuthenticatedUserId } from "@/lib/socket/socketAuthMiddleware";
 import { callManager } from "@/lib/socket/callManager";
 import type { CallType } from "@/types/database";
@@ -24,7 +24,7 @@ export function initializeCallSocket(socket: Socket, io: Server) {
         const call = await callManager.initiateCall({
           callType: data.callType as CallType,
           initiatedBy: callerId,
-          participantIds: [data.userId],
+          participantIds: [data.userId, callerId],
         });
 
         // Notify caller that call is ringing
@@ -55,7 +55,11 @@ export function initializeCallSocket(socket: Socket, io: Server) {
   // Accept a call
   socket.on(
     "accept-call",
-    async (data: { sessionId: string; callerId: string; callerName: string }) => {
+    async (data: {
+      sessionId: string;
+      callerId: string;
+      callerName: string;
+    }) => {
       const recipientId = getAuthenticatedUserId(socket);
       if (!recipientId) {
         socket.emit("call-error", { error: "Unauthorized" });
@@ -137,7 +141,39 @@ export function initializeCallSocket(socket: Socket, io: Server) {
     }
   );
 
-  // End an active call
+  // Leave an active call (without ending it for others)
+  socket.on("leave-call", async (data: { sessionId: string }) => {
+    const userId = getAuthenticatedUserId(socket);
+    if (!userId) return;
+
+    try {
+      console.log(`🚪 ${userId} leaving call ${data.sessionId}`);
+
+      // Update participant status to LEFT
+      const call = await callManager.leaveCall(data.sessionId, userId);
+
+      // Notify other participants that this user left
+      // TODO: Get all other participant IDs from call record and notify them
+      sendToUsers(
+        io,
+        call.participants.map((p) => p.userId),
+        "participant-left",
+        {
+          sessionId: data.sessionId,
+          userId: userId,
+        }
+      );
+
+      console.log(`✅ ${userId} left call ${data.sessionId}`);
+    } catch (error) {
+      console.error("Error leaving call:", error);
+      socket.emit("call-error", {
+        error: error instanceof Error ? error.message : "Failed to leave call",
+      });
+    }
+  });
+
+  // End an active call (terminates for everyone)
   socket.on("end-call", async (data: { sessionId: string }) => {
     const userId = getAuthenticatedUserId(socket);
     if (!userId) return;
@@ -146,19 +182,23 @@ export function initializeCallSocket(socket: Socket, io: Server) {
       console.log(`🔚 ${userId} ending call ${data.sessionId}`);
 
       // End the call
-      await callManager.endCall(data.sessionId);
+      const call = await callManager.endCall(data.sessionId);
 
       // Notify all participants
       // TODO: Get all participant IDs from call record
-      socket.broadcast.emit("call-ended", {
-        sessionId: data.sessionId,
-        endedBy: userId,
-      });
+      sendToUsers(
+        io,
+        call.participants.map((p) => p.userId),
+        "call-ended",
+        {
+          sessionId: data.sessionId,
+          endedBy: userId,
+        }
+      );
     } catch (error) {
       console.error("Error ending call:", error);
       socket.emit("call-error", {
-        error:
-          error instanceof Error ? error.message : "Failed to end call",
+        error: error instanceof Error ? error.message : "Failed to end call",
       });
     }
   });

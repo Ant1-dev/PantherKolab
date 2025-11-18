@@ -1,40 +1,108 @@
-"use client"
+"use client";
 
-import { useState } from 'react'
-import { MeetingHeader } from './MeetingHeader'
-import { ParticipantTile } from './ParticipantTile'
-import { MeetingControls } from './MeetingControls'
+import { useEffect, useCallback, useMemo } from "react";
+import { MeetingHeader } from "./MeetingHeader";
+import { ParticipantTile } from "./ParticipantTile";
+import { MeetingControls } from "./MeetingControls";
+import { useChimeMeeting } from "@/hooks/useChimeMeeting";
+import type { Meeting, Attendee } from "@aws-sdk/client-chime-sdk-meetings";
 
 interface Participant {
-  id: string
-  name: string
-  isLocal: boolean
-  isMuted: boolean
-  hasVideo: boolean
+  id: string;
+  name: string;
+  isLocal: boolean;
+  isMuted: boolean;
+  hasVideo: boolean;
 }
 
 interface MeetingViewProps {
-  meetingTitle: string
-  meetingSubtitle?: string
-  participants: Participant[]
-  activeSpeakerId?: string
-  onEndCall: () => void
-  onSettingsClick?: () => void
+  meetingTitle: string;
+  meetingSubtitle?: string;
+  participants?: Participant[];
+  activeSpeakerId?: string;
+  isCallInitiator?: boolean;
+  meeting?: Meeting;
+  attendee?: Attendee;
+  localUserId?: string;
+  onEndCall: () => void;
+  onLeaveCall?: () => void;
+  onSettingsClick?: () => void;
 }
 
 export function MeetingView({
   meetingTitle,
   meetingSubtitle,
-  participants,
-  activeSpeakerId,
+  participants: mockParticipants,
+  activeSpeakerId: mockActiveSpeakerId,
+  isCallInitiator,
+  meeting,
+  attendee,
+  localUserId,
   onEndCall,
+  onLeaveCall,
   onSettingsClick,
 }: MeetingViewProps) {
-  const [isMuted, setIsMuted] = useState(false)
-  const [isVideoEnabled, setIsVideoEnabled] = useState(true)
+  // Memoize error handler to prevent recreating on every render
+  const handleError = useCallback((error: Error) => {
+    console.error("Chime meeting error:", error);
+    alert("Meeting error: " + error.message);
+  }, []);
+
+  const {
+    isInitialized,
+    isMuted,
+    isVideoEnabled,
+    videoTiles,
+    activeSpeakerId,
+    startAudioVideo,
+    toggleMute,
+    toggleVideo,
+    bindVideoTile,
+  } = useChimeMeeting({
+    meeting: meeting || null,
+    attendee: attendee || null,
+    onError: handleError,
+  });
+
+  // Start audio/video when initialized
+  useEffect(() => {
+    if (isInitialized) {
+      startAudioVideo();
+    }
+  }, [isInitialized, startAudioVideo]);
+
+  // Callback to bind video tiles
+  const handleVideoElementReady = useCallback(
+    (tileId: number, element: HTMLVideoElement) => {
+      bindVideoTile(tileId, element);
+    },
+    [bindVideoTile]
+  );
+
+  // Map video tiles to participants (memoized to prevent recreation)
+  const participants = useMemo(() => {
+    return videoTiles.map((tile) => ({
+      id: tile.attendeeId,
+      name: tile.isLocalTile
+        ? "You"
+        : tile.attendeeId.split("#")[0] || "Unknown",
+      isLocal: tile.isLocalTile,
+      isMuted: tile.isLocalTile ? isMuted : false,
+      hasVideo: true,
+      tileId: tile.tileId,
+    }));
+  }, [videoTiles, isMuted]);
+
+  // Use mock participants if no real tiles yet (for testing)
+  const displayParticipants =
+    participants.length > 0 ? participants : mockParticipants || [];
+  const displayActiveSpeakerId = activeSpeakerId || mockActiveSpeakerId;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-gray-50">
+      {/* Hidden audio element for Chime SDK */}
+      <audio id="chime-audio-output" className="hidden" />
+
       {/* Header */}
       <MeetingHeader
         title={meetingTitle}
@@ -46,14 +114,18 @@ export function MeetingView({
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {participants.map((participant) => (
+            {displayParticipants.map((participant) => (
               <ParticipantTile
                 key={participant.id}
                 name={participant.name}
                 isLocal={participant.isLocal}
-                isActiveSpeaker={activeSpeakerId === participant.id}
+                isActiveSpeaker={displayActiveSpeakerId === participant.id}
                 isMuted={participant.isMuted}
                 hasVideo={participant.hasVideo}
+                tileId={
+                  (participant as Participant & { tileId: number }).tileId
+                }
+                onVideoElementReady={handleVideoElementReady}
               />
             ))}
 
@@ -62,11 +134,23 @@ export function MeetingView({
               <div className="col-span-full flex items-center justify-center py-20">
                 <div className="text-center">
                   <div className="w-24 h-24 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center">
-                    <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    <svg
+                      className="w-12 h-12 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                      />
                     </svg>
                   </div>
-                  <p className="text-gray-500 text-lg">Waiting for others to join...</p>
+                  <p className="text-gray-500 text-lg">
+                    Waiting for others to join...
+                  </p>
                 </div>
               </div>
             )}
@@ -78,10 +162,12 @@ export function MeetingView({
       <MeetingControls
         isMuted={isMuted}
         isVideoEnabled={isVideoEnabled}
-        onToggleMute={() => setIsMuted(!isMuted)}
-        onToggleVideo={() => setIsVideoEnabled(!isVideoEnabled)}
+        onToggleMute={toggleMute}
+        onToggleVideo={toggleVideo}
+        isCallInitiator={isCallInitiator}
         onEndCall={onEndCall}
+        onLeaveCall={onLeaveCall}
       />
     </div>
-  )
+  );
 }
