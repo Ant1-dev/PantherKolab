@@ -11,6 +11,7 @@
  */
 
 import { io, Socket } from "socket.io-client";
+import { BASENAME } from "./utils";
 
 type ConnectionStatus = "connected" | "connecting" | "disconnected";
 
@@ -41,6 +42,8 @@ class SocketClient {
 
     // Primary: Use environment variable from .env file
     // This is the main way to configure Antoine's Socket.IO server URL
+    if (BASENAME) return BASENAME;
+
     if (process.env.NEXT_PUBLIC_SOCKET_URL) {
       return process.env.NEXT_PUBLIC_SOCKET_URL;
     }

@@ -6,6 +6,7 @@ import { IncomingCallModal } from "@/components/calls/IncomingCallModal";
 
 import io, { Socket } from "socket.io-client";
 import { useAuth } from "@/components/contexts/AuthContext";
+import { BASENAME } from "@/lib/utils";
 
 export default function MeetingUITestPage() {
   const [showIncomingCall, setShowIncomingCall] = useState(false);
@@ -34,7 +35,7 @@ export default function MeetingUITestPage() {
   useEffect(() => {
     if (!accessToken) return;
 
-    socketRef.current = io("http://localhost:3000", {
+    socketRef.current = io(BASENAME, {
       path: "/socket.io/",
       auth: {
         token: accessToken,
@@ -365,7 +366,9 @@ export default function MeetingUITestPage() {
           activeSpeakerId="2" // Dr. Maria Rodriguez is speaking
           isCallInitiator={isCallInitiator}
           meeting={meetingData?.meeting}
-          attendee={localUserId ? meetingData?.attendees?.[localUserId] : undefined}
+          attendee={
+            localUserId ? meetingData?.attendees?.[localUserId] : undefined
+          }
           localUserId={localUserId}
           onEndCall={() => {
             // End call for everyone

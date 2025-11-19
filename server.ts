@@ -23,7 +23,7 @@ declare global {
 }
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = "localhost";
+const hostname = dev ? "localhost" : "pantherkolab.com";
 const port = 3000;
 
 const app = next({ dev, hostname, port });
