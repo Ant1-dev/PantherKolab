@@ -28,11 +28,12 @@ class SocketClient {
    *
    * Priority:
    * 1. NEXT_PUBLIC_SOCKET_URL environment variable (set in .env file)
-   * 2. In development: http://localhost:3000 (fallback)
-   * 3. In production: current domain (Next.js handles it)
+   * 2. NEXT_PUBLIC_APP_URL (production domain from env)
+   * 3. In development: http://localhost:3000 (fallback)
+   * 4. In production: current domain (fallback)
    *
-   * To use Antoine's Socket.IO server, just add to .env:
-   * NEXT_PUBLIC_SOCKET_URL=http://antoine-server-url:port
+   * To use a custom Socket.IO server, just add to .env:
+   * NEXT_PUBLIC_SOCKET_URL=http://custom-server-url:port
    */
   private getServerUrl(): string {
     if (typeof window === "undefined") {
@@ -41,11 +42,16 @@ class SocketClient {
     }
 
     // Primary: Use environment variable from .env file
-    // This is the main way to configure Antoine's Socket.IO server URL
+    // This is the main way to configure custom Socket.IO server URL
     if (BASENAME) return BASENAME;
 
     if (process.env.NEXT_PUBLIC_SOCKET_URL) {
       return process.env.NEXT_PUBLIC_SOCKET_URL;
+    }
+
+    // Use production app URL if specified
+    if (process.env.NEXT_PUBLIC_APP_URL) {
+      return process.env.NEXT_PUBLIC_APP_URL;
     }
 
     // Fallback: In development, use localhost:3000
@@ -53,7 +59,7 @@ class SocketClient {
       return "http://localhost:3000";
     }
 
-    // Production: use current domain (Next.js handles it)
+    // Production: use current domain
     return window.location.origin;
   }
 

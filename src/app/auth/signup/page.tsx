@@ -2,7 +2,6 @@
 
 import { useAuth } from "@/components/contexts/AuthContext";
 import { SignUpParams } from "@/types/AuthContextTypes";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import * as authStyles from "@/components/auth/auth.style";
@@ -22,7 +21,7 @@ export default function SignUp() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const { register, verify, resendVerificationCode } = useAuth();
+  const { register } = useAuth();
   const router = useRouter();
 
   // Password validation checks
@@ -106,6 +105,7 @@ export default function SignUp() {
     if (!validateForm()) return;
 
     setIsLoading(true);
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     process.env.NODE_ENV != "production" && console.log("Form data:", formData);
 
     const { firstName, lastName, email, password } = formData;

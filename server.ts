@@ -23,8 +23,8 @@ declare global {
 }
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = dev ? "localhost" : "pantherkolab.com";
-const port = 3000;
+const hostname = dev ? "localhost" : "0.0.0.0"; // Bind to all interfaces in production
+const port = parseInt(process.env.PORT || "3000", 10);
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
@@ -44,13 +44,18 @@ app.prepare().then(() => {
   const io = new Server(server, {
     path: "/socket.io",
     cors: {
-      origin: [
-        "https://pantherkolab.com",
-        "https://www.pantherkolab.com",
-        dev ? `http://${hostname}:${port}` : undefined,
-      ].filter(Boolean) as string[],
+      origin: dev
+        ? "*" // Allow all in development
+        : [
+            "https://pantherkolab.com",
+            "https://www.pantherkolab.com",
+            process.env.NEXT_PUBLIC_APP_URL,
+          ].filter(Boolean) as string[],
       methods: ["GET", "POST"],
+      credentials: true,
     },
+    transports: ["websocket", "polling"],
+    allowEIO3: true, // Enable compatibility with Socket.IO v3 clients if needed
   });
 
   global.io = io;
@@ -80,8 +85,10 @@ app.prepare().then(() => {
     });
   });
 
-  server.listen(port, () => {
-    console.log(`> Ready on http://${hostname}:${port}`);
+  server.listen(port, hostname, () => {
+    const displayHost = hostname === "0.0.0.0" ? "localhost" : hostname;
+    console.log(`> Ready on http://${displayHost}:${port}`);
+    console.log(`> Environment: ${dev ? "development" : "production"}`);
     console.log("> Socket.IO initialized");
   });
 

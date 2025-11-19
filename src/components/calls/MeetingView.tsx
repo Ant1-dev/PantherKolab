@@ -37,7 +37,6 @@ export function MeetingView({
   isCallInitiator,
   meeting,
   attendee,
-  localUserId,
   onEndCall,
   onLeaveCall,
   onSettingsClick,
