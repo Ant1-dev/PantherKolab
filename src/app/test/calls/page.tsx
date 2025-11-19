@@ -37,6 +37,10 @@ export default function MeetingUITestPage() {
 
     socketRef.current = io(BASENAME, {
       path: "/socket.io/",
+      transports: ["websocket"],
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 5,
       auth: {
         token: accessToken,
       },
