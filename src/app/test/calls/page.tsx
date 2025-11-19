@@ -36,8 +36,8 @@ export default function MeetingUITestPage() {
     if (!accessToken) return;
 
     socketRef.current = io(BASENAME, {
-      path: "/socket.io/",
-      transports: ["websocket"],
+      path: "/socket.io",
+      transports: ["websocket", "polling"],
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       reconnectionAttempts: 5,
