@@ -44,7 +44,11 @@ app.prepare().then(() => {
   const io = new Server(server, {
     path: "/socket.io",
     cors: {
-      origin: "*",
+      origin: [
+        "https://pantherkolab.com",
+        "https://www.pantherkolab.com",
+        dev ? `http://${hostname}:${port}` : undefined,
+      ].filter(Boolean) as string[],
       methods: ["GET", "POST"],
     },
   });
