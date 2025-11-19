@@ -4,16 +4,6 @@ import { conversationService } from "@/services/conversationService.js";
 import { getAuthenticatedUserId } from "@/lib/socket/socketAuthMiddleware.js";
 
 export function initializeMessageSocket(socket: Socket, io: Server) {
-  socket.on("join-conversation", (conversationId) => {
-    socket.join(conversationId);
-    console.log(`${socket.id} joined ${conversationId}`);
-  });
-
-  socket.on("leave-conversation", (conversationId) => {
-    socket.leave(conversationId);
-    console.log(`${socket.id} left ${conversationId}`);
-  });
-
   socket.on("send-message", async (data, callback) => {
     try {
       const { conversationId, content, type, tempId } = data;
