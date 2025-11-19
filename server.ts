@@ -42,7 +42,7 @@ app.prepare().then(() => {
   });
 
   const io = new Server(server, {
-    path: "/socket.io",
+    path: "/socket.io/",
     cors: {
       origin: [
         "https://pantherkolab.com",
