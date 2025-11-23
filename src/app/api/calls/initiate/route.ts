@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callService } from '@/services/callService'
 import { conversationService } from '@/services/conversationService'
+import { getAuthenticatedUser, verifyUserMatch } from '@/lib/auth/api-auth'
 import type { CallType } from '@/types/database'
 
 /**
@@ -9,6 +10,15 @@ import type { CallType } from '@/types/database'
  */
 export async function POST(req: NextRequest) {
   try {
+    // Authenticate the request
+    const auth = await getAuthenticatedUser()
+    if (!auth) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const body = await req.json()
     const { callType, initiatedBy, participantIds, conversationId } = body as {
       callType: CallType
@@ -17,10 +27,18 @@ export async function POST(req: NextRequest) {
       conversationId?: string
     }
 
-    // Validate input
-    if (!callType || !initiatedBy || !Array.isArray(participantIds) || participantIds.length === 0) {
+    // Verify the initiatedBy matches the authenticated user
+    if (!verifyUserMatch(initiatedBy, auth.userId)) {
       return NextResponse.json(
-        { error: 'Missing required fields: callType, initiatedBy, participantIds' },
+        { error: 'Forbidden: Cannot initiate calls as another user' },
+        { status: 403 }
+      )
+    }
+
+    // Validate input
+    if (!callType || !Array.isArray(participantIds) || participantIds.length === 0) {
+      return NextResponse.json(
+        { error: 'Missing required fields: callType, participantIds' },
         { status: 400 }
       )
     }
@@ -69,10 +87,10 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Create call record
+    // Create call record (use authenticated userId)
     const call = await callService.createCall({
       callType,
-      initiatedBy,
+      initiatedBy: auth.userId,
       participantIds,
       conversationId,
     })

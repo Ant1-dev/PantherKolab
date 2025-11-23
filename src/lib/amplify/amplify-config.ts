@@ -33,6 +33,14 @@ export const authConfig: ResourcesConfig["Auth"] = {
   },
 };
 
+export const apiConfig: ResourcesConfig["API"] = {
+  Events: {
+    endpoint: process.env.NEXT_PUBLIC_APPSYNC_HTTP_ENDPOINT!,
+    region: "us-east-1",
+    defaultAuthMode: "userPool", // Uses Cognito tokens automatically
+  },
+};
+
 // Configure immediately on module load
 if (typeof window !== "undefined") {
   process.env.NODE_ENV != "production" &&
@@ -44,6 +52,7 @@ if (typeof window !== "undefined") {
   Amplify.configure(
     {
       Auth: authConfig,
+      API: apiConfig,
     },
     {
       ssr: true,
@@ -67,6 +76,7 @@ export function ConfigureAmplifyClientSide() {
     Amplify.configure(
       {
         Auth: authConfig,
+        API: apiConfig,
       },
       {
         ssr: true,

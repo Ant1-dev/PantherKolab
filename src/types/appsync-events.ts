@@ -1,0 +1,159 @@
+/**
+ * AppSync Event Types
+ *
+ * Type definitions for all real-time events
+ */
+
+// ============================================================================
+// Message Events
+// ============================================================================
+
+export interface MessageSentEvent {
+  type: "MESSAGE_SENT";
+  data: {
+    messageId: string;
+    conversationId: string;
+    senderId: string;
+    content: string;
+    type: "TEXT" | "AUDIO" | "IMAGE" | "VIDEO" | "FILE";
+    timestamp: string;
+    tempId?: string; // Client-side temporary ID for optimistic updates
+  };
+}
+
+export interface MessageDeletedEvent {
+  type: "MESSAGE_DELETED";
+  data: {
+    messageId: string;
+    conversationId: string;
+    deletedBy: string;
+  };
+}
+
+export interface MessageReadEvent {
+  type: "MESSAGE_READ";
+  data: {
+    messageId: string;
+    conversationId: string;
+    readBy: string;
+    readAt: string;
+  };
+}
+
+// ============================================================================
+// Typing Events
+// ============================================================================
+
+export interface UserTypingEvent {
+  type: "USER_TYPING";
+  data: {
+    userId: string;
+    conversationId: string;
+  };
+}
+
+export interface UserStoppedTypingEvent {
+  type: "USER_STOPPED_TYPING";
+  data: {
+    userId: string;
+    conversationId: string;
+  };
+}
+
+// ============================================================================
+// Call Events
+// ============================================================================
+
+export interface IncomingCallEvent {
+  type: "INCOMING_CALL";
+  data: {
+    sessionId: string;
+    callerId: string;
+    callerName: string;
+    callType: "AUDIO" | "VIDEO";
+  };
+}
+
+export interface CallRingingEvent {
+  type: "CALL_RINGING";
+  data: {
+    sessionId: string;
+    recipientId: string;
+  };
+}
+
+export interface CallConnectedEvent {
+  type: "CALL_CONNECTED";
+  data: {
+    sessionId: string;
+    meeting: {
+      MeetingId: string;
+      MediaPlacement: {
+        AudioHostUrl: string;
+        AudioFallbackUrl: string;
+        SignalingUrl: string;
+        TurnControlUrl: string;
+      };
+    };
+    attendees: {
+      [userId: string]: {
+        AttendeeId: string;
+        JoinToken: string;
+      };
+    };
+  };
+}
+
+export interface CallRejectedEvent {
+  type: "CALL_REJECTED";
+  data: {
+    sessionId: string;
+    rejectedBy: string;
+  };
+}
+
+export interface CallEndedEvent {
+  type: "CALL_ENDED";
+  data: {
+    sessionId: string;
+    endedBy: string;
+  };
+}
+
+export interface ParticipantLeftEvent {
+  type: "PARTICIPANT_LEFT";
+  data: {
+    sessionId: string;
+    userId: string;
+  };
+}
+
+export interface CallErrorEvent {
+  type: "CALL_ERROR";
+  data: {
+    sessionId?: string;
+    error: string;
+  };
+}
+
+// ============================================================================
+// Union Types
+// ============================================================================
+
+export type MessageEvent =
+  | MessageSentEvent
+  | MessageDeletedEvent
+  | MessageReadEvent;
+
+export type TypingEvent = UserTypingEvent | UserStoppedTypingEvent;
+
+export type CallEvent =
+  | IncomingCallEvent
+  | CallRingingEvent
+  | CallConnectedEvent
+  | CallRejectedEvent
+  | CallEndedEvent
+  | ParticipantLeftEvent
+  | CallErrorEvent;
+
+export type AppSyncEventUnion = MessageEvent | TypingEvent | CallEvent;
