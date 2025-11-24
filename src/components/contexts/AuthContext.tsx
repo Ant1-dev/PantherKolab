@@ -74,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [resendSuccess, setResendSuccess] = useState(false);
   useEffect(() => {
     checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /**
