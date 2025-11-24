@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { callManager } from "@/lib/socket/callManager";
 import { callService } from "@/services/callService";
 import { getAuthenticatedUser } from "@/lib/auth/api-auth";
-import { publishToUsers } from "@/lib/appSync/appsync-client";
+import { publishToUsers } from "@/lib/appSync/appsync-server-client";
 
 /**
  * POST /api/calls/reject
@@ -47,13 +47,18 @@ export async function POST(request: NextRequest) {
     await callManager.rejectCall(sessionId, auth.userId);
 
     // Notify the caller that the call was rejected
-    await publishToUsers([call.initiatedBy], "/users", {
-      type: "CALL_REJECTED",
-      data: {
-        sessionId,
-        rejectedBy: auth.userId,
+    await publishToUsers(
+      [call.initiatedBy],
+      "/users",
+      {
+        type: "CALL_REJECTED",
+        data: {
+          sessionId,
+          rejectedBy: auth.userId,
+        },
       },
-    });
+      auth.accessToken
+    );
 
     console.log(`[Calls] Call rejected: ${sessionId} by ${auth.userId}`);
 

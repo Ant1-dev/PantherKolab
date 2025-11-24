@@ -1,49 +1,15 @@
 /**
  * AWS AppSync Events Client
  *
- * Uses AWS Amplify's events module for real-time subscriptions
- * Replaces Socket.IO for real-time functionality
+ * Uses AWS Amplify's events module for real-time subscriptions.
+ * This file should only contain client-side subscription logic.
+ * Event publishing should be handled by the server-side client.
  */
 
 "use client";
 
-import { DocumentType } from "@aws-amplify/core/internals/utils";
 import { events } from "aws-amplify/api";
-//import { fetchAuthSession } from "aws-amplify/auth";
-
-// HTTP endpoint for server-side publishing
-const HTTP_ENDPOINT = process.env.NEXT_PUBLIC_APPSYNC_EVENT_HTTP_ENDPOINT!;
-
-// ============================================================================
-// Types
-// ============================================================================
-
-export type MessageEventType =
-  | "MESSAGE_SENT"
-  | "MESSAGE_DELETED"
-  | "MESSAGE_UPDATED"
-  | "MESSAGE_READ";
-
-export type TypingEventType = "USER_TYPING" | "USER_STOPPED_TYPING";
-
-export type CallEventType =
-  | "INCOMING_CALL"
-  | "CALL_RINGING"
-  | "CALL_CONNECTED"
-  | "CALL_REJECTED"
-  | "CALL_ENDED"
-  | "CALL_CANCELLED"
-  | "CALL_ERROR"
-  | "PARTICIPANT_LEFT";
-
-export type EventType = MessageEventType | TypingEventType | CallEventType;
-
-export interface AppSyncEvent<T = DocumentType> {
-  type: EventType;
-  data: T;
-  timestamp?: string;
-  serverTimestamp?: string;
-}
+import { AppSyncEvent } from "@/types/appsync-events";
 
 // ============================================================================
 // Subscriptions (using Amplify events module)
@@ -137,93 +103,6 @@ export async function subscribeToChannels<T = unknown>(
 }
 
 // ============================================================================
-// Publishing (using Amplify events.post)
-// ============================================================================
-
-/**
- * Publish an event to an AppSync Events channel
- *
- * @example
- * await publishEvent('/chats/conv-123', {
- *   type: 'MESSAGE_SENT',
- *   data: { messageId: 'msg-456', content: 'Hello' }
- * });
- */
-export async function publishEvent(
-  channel: string,
-  event: AppSyncEvent
-): Promise<void> {
-  // Add client timestamp
-  const eventWithTimestamp = {
-    ...event,
-    // timestamp: event.timestamp || new Date().toISOString(),
-  };
-
-  try {
-    await events.post(channel, eventWithTimestamp);
-    console.log(`[AppSync] Published ${event.type} to ${channel}`);
-  } catch (error) {
-    console.error(`[AppSync] Failed to publish to ${channel}:`, error);
-    throw error;
-  }
-}
-
-/**
- * Publish multiple events to a channel
- */
-export async function batchPublish(
-  channel: string,
-  eventList: AppSyncEvent[]
-): Promise<void> {
-  const eventsWithTimestamp = eventList.map((event) => ({
-    ...event,
-    timestamp: event.timestamp || new Date().toISOString(),
-  }));
-
-  // Amplify events.post can accept an array
-  await events.post(channel, eventsWithTimestamp);
-  console.log(`[AppSync] Published ${eventList.length} events to ${channel}`);
-}
-
-// ============================================================================
-// Server-side Publishing (for API routes)
-// ============================================================================
-
-/**
- * Publish from server-side (API routes) using HTTP
- * Use this in Next.js API routes where Amplify client isn't available
- */
-export async function publishEventFromServer(
-  channel: string,
-  event: AppSyncEvent,
-  authToken: string
-): Promise<void> {
-  const eventWithTimestamp = {
-    ...event,
-    timestamp: event.timestamp || new Date().toISOString(),
-  };
-
-  const response = await fetch(HTTP_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: authToken,
-    },
-    body: JSON.stringify({
-      channel,
-      events: [JSON.stringify(eventWithTimestamp)],
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`AppSync publish failed: ${response.status} - ${error}`);
-  }
-
-  console.log(`[AppSync] Server published ${event.type} to ${channel}`);
-}
-
-// ============================================================================
 // User-Centric Subscription Functions
 // ============================================================================
 // With user-centric channels, each user subscribes to their own channel
@@ -295,44 +174,10 @@ export async function subscribeToCallSession(
 }
 
 // ============================================================================
-// Multi-Publish Helper (for API routes)
-// ============================================================================
-
-/**
- * Publish an event to multiple user channels
- *
- * Used by API routes to broadcast to all conversation participants.
- * For a 10-person group chat, this publishes to 10 channels.
- */
-export async function publishToUsers(
-  userIds: string[],
-  channelPrefix: string,
-  event: AppSyncEvent
-): Promise<void> {
-  const eventWithTimestamp = {
-    ...event,
-    timestamp: event.timestamp || new Date().toISOString(),
-  };
-
-  await Promise.all(
-    userIds.map((userId) =>
-      events.post(`${channelPrefix}/${userId}`, eventWithTimestamp)
-    )
-  );
-
-  console.log(
-    `[AppSync] Published ${event.type} to ${userIds.length} user channels`
-  );
-}
-
-// ============================================================================
 // Export
 // ============================================================================
 const AppSyncClient = {
   // Core functions
-  publishEvent,
-  batchPublish,
-  publishEventFromServer,
   subscribeToChannel,
   subscribeToChannels,
 
@@ -341,8 +186,5 @@ const AppSyncClient = {
   subscribeToUserTyping,
   subscribeToUserNotifications,
   subscribeToCallSession,
-
-  // Multi-publish helper
-  publishToUsers,
 };
 export default AppSyncClient;

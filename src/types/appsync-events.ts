@@ -168,4 +168,38 @@ export type CallEvent =
   | ParticipantLeftEvent
   | CallErrorEvent;
 
+import { DocumentType } from "@aws-amplify/core/internals/utils";
+
 export type AppSyncEventUnion = ChatEvent | CallEvent;
+
+// ============================================================================
+// Generic Event Type
+// ============================================================================
+// For generic publishers or subscribers that don't need detailed type info
+
+export type MessageEventType =
+  | "MESSAGE_SENT"
+  | "MESSAGE_DELETED"
+  | "MESSAGE_UPDATED"
+  | "MESSAGE_READ";
+
+export type TypingEventType = "USER_TYPING" | "USER_STOPPED_TYPING";
+
+export type CallEventType =
+  | "INCOMING_CALL"
+  | "CALL_RINGING"
+  | "CALL_CONNECTED"
+  | "CALL_REJECTED"
+  | "CALL_ENDED"
+  | "CALL_CANCELLED"
+  | "CALL_ERROR"
+  | "PARTICIPANT_LEFT";
+
+export type EventType = MessageEventType | TypingEventType | CallEventType;
+
+export interface AppSyncEvent<T = DocumentType> {
+  type: EventType;
+  data: T;
+  timestamp?: string;
+  serverTimestamp?: string;
+}

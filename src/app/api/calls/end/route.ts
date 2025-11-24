@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { callManager } from "@/lib/socket/callManager";
 import { callService } from "@/services/callService";
 import { getAuthenticatedUser } from "@/lib/auth/api-auth";
-import { publishToUsers } from "@/lib/appSync/appsync-client";
+import { publishToUsers } from "@/lib/appSync/appsync-server-client";
 
 /**
  * POST /api/calls/end
@@ -51,13 +51,18 @@ export async function POST(request: NextRequest) {
     const participantIds = call.participants.map((p) => p.userId);
 
     // Notify all participants that the call has ended
-    await publishToUsers(participantIds, "/users", {
-      type: "CALL_ENDED",
-      data: {
-        sessionId,
-        endedBy: auth.userId,
+    await publishToUsers(
+      participantIds,
+      "/users",
+      {
+        type: "CALL_ENDED",
+        data: {
+          sessionId,
+          endedBy: auth.userId,
+        },
       },
-    });
+      auth.accessToken
+    );
 
     console.log(`[Calls] Call ended: ${sessionId} by ${auth.userId}`);
 

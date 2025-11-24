@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { publishToUsers } from "@/lib/appSync/appsync-client";
+import { publishToUsers } from "@/lib/appSync/appsync-server-client";
 import { conversationService } from "@/services/conversationService";
 import { getAuthenticatedUser } from "@/lib/auth/api-auth";
 
@@ -42,13 +42,18 @@ export async function POST(request: NextRequest) {
     );
 
     // Publish to /chats channel (same as messages) for unified subscription
-    await publishToUsers(otherParticipantIds, "/chats", {
-      type: isTyping ? "USER_TYPING" : "USER_STOPPED_TYPING",
-      data: {
-        userId: auth.userId,
-        conversationId,
+    await publishToUsers(
+      otherParticipantIds,
+      "/chats",
+      {
+        type: isTyping ? "USER_TYPING" : "USER_STOPPED_TYPING",
+        data: {
+          userId: auth.userId,
+          conversationId,
+        },
       },
-    });
+      auth.accessToken
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -9,7 +9,7 @@ import type {
   Call,
   CallParticipant,
   CreateCallInput,
-  CallType,
+  //CallType,
   CallStatus,
 } from "@/types/database";
 

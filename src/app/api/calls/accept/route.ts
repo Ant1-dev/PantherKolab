@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callManager } from "@/lib/socket/callManager";
 import { getAuthenticatedUser } from "@/lib/auth/api-auth";
-import { publishToUsers } from "@/lib/appSync/appsync-client";
+import { publishToUsers } from "@/lib/appSync/appsync-server-client";
 
 /**
  * POST /api/calls/accept
@@ -54,10 +54,15 @@ export async function POST(request: NextRequest) {
     const participantIds = result.call.participants.map((p) => p.userId);
 
     // Notify all participants that the call is connected
-    await publishToUsers(participantIds, "/users", {
-      type: "CALL_CONNECTED",
-      data: connectionData,
-    });
+    await publishToUsers(
+      participantIds,
+      "/users",
+      {
+        type: "CALL_CONNECTED",
+        data: connectionData,
+      },
+      auth.accessToken
+    );
 
     console.log(`[Calls] Call accepted and connected: ${sessionId}`);
 

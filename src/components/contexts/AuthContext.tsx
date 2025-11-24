@@ -8,7 +8,7 @@ import {
   ReactNode,
 } from "react";
 import { Amplify } from "aws-amplify";
-import { authConfig } from "@/lib/amplify/amplify-config";
+import { authConfig } from "@/lib/amplify/amplify-server-config";
 import {
   signIn,
   signOut,
@@ -39,14 +39,22 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const PENDING_PROFILE_KEY = "pantherkolab_pending_profile";
 
 // Helper to store pending profile data during registration
-function storePendingProfile(data: { firstName: string; lastName: string; email: string }) {
+function storePendingProfile(data: {
+  firstName: string;
+  lastName: string;
+  email: string;
+}) {
   if (typeof window !== "undefined") {
     localStorage.setItem(PENDING_PROFILE_KEY, JSON.stringify(data));
   }
 }
 
 // Helper to get and clear pending profile data
-function getPendingProfile(): { firstName: string; lastName: string; email: string } | null {
+function getPendingProfile(): {
+  firstName: string;
+  lastName: string;
+  email: string;
+} | null {
   if (typeof window === "undefined") return null;
   const data = localStorage.getItem(PENDING_PROFILE_KEY);
   if (data) {
@@ -267,16 +275,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-const getAccessToken = async () => {
-  try {
-    // Force fetching the latest session
-    const session = await fetchAuthSession({ forceRefresh: true });
-    return session.tokens?.accessToken?.toString() || null;
-  } catch (err) {
-    console.error("Failed to get access token:", err);
-    return null;
-  }
-};
+  const getAccessToken = async () => {
+    try {
+      // Force fetching the latest session
+      const session = await fetchAuthSession({ forceRefresh: true });
+      return session.tokens?.accessToken?.toString() || null;
+    } catch (err) {
+      console.error("Failed to get access token:", err);
+      return null;
+    }
+  };
 
   const clearError = () => {
     setError("");

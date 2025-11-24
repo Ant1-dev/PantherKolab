@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { callManager } from "@/lib/socket/callManager";
 import { callService } from "@/services/callService";
 import { getAuthenticatedUser } from "@/lib/auth/api-auth";
-import { publishToUsers } from "@/lib/appSync/appsync-client";
+import { publishToUsers } from "@/lib/appSync/appsync-server-client";
 
 /**
  * POST /api/calls/leave
@@ -58,14 +58,19 @@ export async function POST(request: NextRequest) {
 
     // Notify other participants that this user left
     if (otherParticipantIds.length > 0) {
-      await publishToUsers(otherParticipantIds, "/users", {
-        type: "PARTICIPANT_LEFT",
-        data: {
-          sessionId,
-          userId: auth.userId,
-          newOwnerId: transferredOwnerId, // null if no ownership transfer occurred
+      await publishToUsers(
+        otherParticipantIds,
+        "/users",
+        {
+          type: "PARTICIPANT_LEFT",
+          data: {
+            sessionId,
+            userId: auth.userId,
+            newOwnerId: transferredOwnerId, // null if no ownership transfer occurred
+          },
         },
-      });
+        auth.accessToken
+      );
     }
 
     console.log(

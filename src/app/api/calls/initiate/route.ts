@@ -3,7 +3,7 @@ import { callService } from "@/services/callService";
 import { conversationService } from "@/services/conversationService";
 import { userService } from "@/services/userService";
 import { getAuthenticatedUser, verifyUserMatch } from "@/lib/auth/api-auth";
-import { publishToUsers } from "@/lib/appSync/appsync-client";
+import { publishToUsers } from "@/lib/appSync/appsync-server-client";
 import type { CallType } from "@/types/database";
 
 /**
@@ -122,24 +122,34 @@ export async function POST(req: NextRequest) {
     const mediaType = "AUDIO" as const;
 
     // Notify the caller that the call is ringing
-    await publishToUsers([auth.userId], "/users", {
-      type: "CALL_RINGING",
-      data: {
-        sessionId: call.sessionId,
-        recipientId: participantIds[0], // First recipient for direct calls
+    await publishToUsers(
+      [auth.userId],
+      "/users",
+      {
+        type: "CALL_RINGING",
+        data: {
+          sessionId: call.sessionId,
+          recipientId: participantIds[0], // First recipient for direct calls
+        },
       },
-    });
+      auth.accessToken
+    );
 
     // Notify all recipients about the incoming call
-    await publishToUsers(participantIds, "/users", {
-      type: "INCOMING_CALL",
-      data: {
-        sessionId: call.sessionId,
-        callerId: auth.userId,
-        callerName,
-        callType: mediaType,
+    await publishToUsers(
+      participantIds,
+      "/users",
+      {
+        type: "INCOMING_CALL",
+        data: {
+          sessionId: call.sessionId,
+          callerId: auth.userId,
+          callerName,
+          callType: mediaType,
+        },
       },
-    });
+      auth.accessToken
+    );
 
     return NextResponse.json({
       success: true,

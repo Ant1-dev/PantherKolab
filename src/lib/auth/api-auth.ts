@@ -23,7 +23,7 @@ export interface AuthResult {
  * if (!auth) {
  *   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
  * }
- * // Use auth.userId for the authenticated user's ID
+ *  Use auth.userId for the authenticated user's ID
  * ```
  */
 export async function getAuthenticatedUser(): Promise<AuthResult | null> {
