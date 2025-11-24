@@ -101,9 +101,8 @@ This migration uses a **user-centric subscription model** where each user subscr
 │  │ Cognito JWT Token (for auth on both AppSync and API routes) ││
 │  └─────────────────────────────────────────────────────────────┘│
 │                                                                  │
-│  Subscriptions (only 3-4 per user):                             │
-│  • /chats/{currentUserId}   ← All messages for this user        │
-│  • /typing/{currentUserId}  ← All typing indicators             │
+│  Subscriptions (only 2-3 per user):                             │
+│  • /chats/{currentUserId}   ← Messages + typing indicators      │
 │  • /users/{currentUserId}   ← Incoming calls, notifications     │
 │  • /calls/{sessionId}       ← Active call events (when in call) │
 └──────────────┬────────────────────────────┬─────────────────────┘
@@ -116,9 +115,9 @@ This migration uses a **user-centric subscription model** where each user subscr
 │                          │    │                                │
 │  User-Centric Channels:  │    │  /api/messages/send            │
 │  • /chats/{userId}       │    │    → Publishes to ALL          │
-│  • /typing/{userId}      │    │      participant channels      │
-│  • /users/{userId}       │    │  /api/calls/initiate           │
-│  • /calls/{sessionId}    │    │  /api/calls/accept             │
+│  • /users/{userId}       │    │      participant channels      │
+│  • /calls/{sessionId}    │    │  /api/calls/initiate           │
+│                          │    │  /api/calls/accept             │
 │                          │    │  /api/calls/reject             │
 │  onPublish: Add timestamp│    │  /api/calls/end                │
 └──────────────────────────┘    │                                │
@@ -131,8 +130,8 @@ This migration uses a **user-centric subscription model** where each user subscr
 
 | Aspect                      | Per-Conversation              | User-Centric (Chosen)     |
 | --------------------------- | ----------------------------- | ------------------------- |
-| **Subscriptions per user**  | 20-40+ (one per chat)         | 3-4 (fixed)               |
-| **Reconnection time**       | Slow (resubscribe to all)     | Fast (only 3-4 channels)  |
+| **Subscriptions per user**  | 20-40+ (one per chat)         | 2-3 (fixed)               |
+| **Reconnection time**       | Slow (resubscribe to all)     | Fast (only 2-3 channels)  |
 | **Client complexity**       | High (dynamic sub management) | Low (fixed subscriptions) |
 | **Publishes per message**   | 1                             | N (one per participant)   |
 | **Cost per message**        | Lower                         | ~6x higher                |
@@ -168,12 +167,11 @@ This migration uses a **user-centric subscription model** where each user subscr
 
 In the AppSync Events console, create these namespaces:
 
-| Namespace   | Purpose                      | Auth    | Notes                                           |
-| ----------- | ---------------------------- | ------- | ----------------------------------------------- |
-| `/chats/*`  | Message events for a user    | Cognito | Each user subscribes to `/chats/{theirUserId}`  |
-| `/typing/*` | Typing indicators for a user | Cognito | Each user subscribes to `/typing/{theirUserId}` |
-| `/users/*`  | Direct notifications (calls) | Cognito | Incoming calls, call status updates             |
-| `/calls/*`  | Active call session events   | Cognito | Subscribed only during active call              |
+| Namespace   | Purpose                          | Auth    | Notes                                          |
+| ----------- | -------------------------------- | ------- | ---------------------------------------------- |
+| `/chats/*`  | Messages + typing indicators     | Cognito | Each user subscribes to `/chats/{theirUserId}` |
+| `/users/*`  | Direct notifications (calls)     | Cognito | Incoming calls, call status updates            |
+| `/calls/*`  | Active call session events       | Cognito | Subscribed only during active call             |
 
 **Important:** With user-centric channels, messages are published to each participant's channel. For a 2-person chat, the server publishes to 2 channels. For a 10-person group, the server publishes to 10 channels.
 
@@ -355,11 +353,10 @@ export function onSubscribe(ctx) {
   const identity = ctx.identity;
   const userId = identity.sub; // Cognito user ID
 
-  // User-centric channels: /chats/{userId}, /typing/{userId}, /users/{userId}
+  // User-centric channels: /chats/{userId}, /users/{userId}
   // Users can ONLY subscribe to their own channels
   if (
     channel.startsWith("/chats/") ||
-    channel.startsWith("/typing/") ||
     channel.startsWith("/users/")
   ) {
     const channelUserId = channel.split("/")[2];
@@ -952,6 +949,64 @@ export type AppSyncEventUnion = MessageEvent | TypingEvent | CallEvent;
 
 ## Phase 3: Migrate Messaging
 
+### Step 3.0: Create Auth Utility (Required First)
+
+Before creating API routes, create a shared authentication utility:
+
+Create `src/lib/auth/api-auth.ts`:
+
+```typescript
+import { cookies } from "next/headers";
+import { fetchAuthSession } from "aws-amplify/auth/server";
+import { runWithAmplifyServerContext } from "@/lib/amplify/amplify-server-utils";
+
+export interface AuthResult {
+  userId: string;
+  email?: string;
+  accessToken: string;
+}
+
+/**
+ * Get the authenticated user from the request context.
+ * Uses Amplify server-side auth to verify the JWT token.
+ */
+export async function getAuthenticatedUser(): Promise<AuthResult | null> {
+  try {
+    const session = await runWithAmplifyServerContext({
+      nextServerContext: { cookies },
+      operation: (contextSpec) => fetchAuthSession(contextSpec),
+    });
+
+    const accessToken = session.tokens?.accessToken;
+    const userId = accessToken?.payload?.sub as string | undefined;
+
+    if (!userId || !accessToken) {
+      return null;
+    }
+
+    return {
+      userId,
+      email: accessToken.payload?.email as string | undefined,
+      accessToken: accessToken.toString(),
+    };
+  } catch (error) {
+    console.error("[Auth] Failed to get authenticated user:", error);
+    return null;
+  }
+}
+
+/**
+ * Verify that the provided userId matches the authenticated user.
+ */
+export function verifyUserMatch(
+  bodyUserId: string | undefined,
+  authUserId: string
+): boolean {
+  if (!bodyUserId) return true;
+  return bodyUserId === authUserId;
+}
+```
+
 ### Step 3.1: Create Message Send API Route
 
 Create `src/app/api/messages/send/route.ts`:
@@ -960,26 +1015,30 @@ Create `src/app/api/messages/send/route.ts`:
 import { NextRequest, NextResponse } from "next/server";
 import { messageService } from "@/services/messageService";
 import { conversationService } from "@/services/conversationService";
+import { getAuthenticatedUser, verifyUserMatch } from "@/lib/auth/api-auth";
 import { publishToUsers } from "@/lib/appsync-client";
-import { runWithAmplifyServerContext } from "@/lib/amplify/amplify-server-utils";
-import { fetchAuthSession } from "aws-amplify/auth/server";
-import { cookies } from "next/headers";
 
 export async function POST(request: NextRequest) {
   try {
-    // Get authenticated user
-    const session = await runWithAmplifyServerContext({
-      nextServerContext: { cookies },
-      operation: (contextSpec) => fetchAuthSession(contextSpec),
-    });
-
-    const userId = session.tokens?.accessToken?.payload?.sub as string;
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Authenticate the request
+    const auth = await getAuthenticatedUser();
+    if (!auth) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
-    // Parse request body
     const body = await request.json();
+
+    // Verify the senderId matches the authenticated user (if provided)
+    if (!verifyUserMatch(body.senderId, auth.userId)) {
+      return NextResponse.json(
+        { success: false, error: "Forbidden: Cannot send messages as another user" },
+        { status: 403 }
+      );
+    }
+
     const { conversationId, content, type = "TEXT", tempId } = body;
 
     if (!conversationId || !content) {
@@ -989,10 +1048,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Verify user is a participant in this conversation
+    const conversation = await conversationService.getConversation(conversationId);
+    if (!conversation) {
+      return NextResponse.json(
+        { error: "Conversation not found" },
+        { status: 404 }
+      );
+    }
+
+    if (!conversation.participants.includes(auth.userId)) {
+      return NextResponse.json(
+        { error: "Forbidden: You are not a participant in this conversation" },
+        { status: 403 }
+      );
+    }
+
     // Save message to DynamoDB
     const message = await messageService.sendMessage({
       conversationId,
-      senderId: userId,
+      senderId: auth.userId, // Use authenticated userId
       content,
       type,
     });
@@ -1003,16 +1078,11 @@ export async function POST(request: NextRequest) {
       message.timestamp
     );
 
-    // Get all participants in the conversation
-    const conversation = await conversationService.getConversation(
-      conversationId
-    );
-    const participantIds = conversation.participants.map((p) => p.id);
-
     // USER-CENTRIC: Publish to each participant's channel
+    // (conversation was already fetched above for participant check)
     // For a 2-person chat, this publishes to 2 channels
     // For a 10-person group, this publishes to 10 channels
-    await publishToUsers(participantIds, "/chats", {
+    await publishToUsers(conversation.participants, "/chats", {
       type: "MESSAGE_SENT",
       data: {
         ...message,
@@ -1046,38 +1116,42 @@ Create `src/app/api/messages/typing/route.ts`:
 import { NextRequest, NextResponse } from "next/server";
 import { publishToUsers } from "@/lib/appsync-client";
 import { conversationService } from "@/services/conversationService";
-import { runWithAmplifyServerContext } from "@/lib/amplify/amplify-server-utils";
-import { fetchAuthSession } from "aws-amplify/auth/server";
-import { cookies } from "next/headers";
+import { getAuthenticatedUser } from "@/lib/auth/api-auth";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await runWithAmplifyServerContext({
-      nextServerContext: { cookies },
-      operation: (contextSpec) => fetchAuthSession(contextSpec),
-    });
-
-    const userId = session.tokens?.accessToken?.payload?.sub as string;
-    if (!userId) {
+    // Authenticate the request
+    const auth = await getAuthenticatedUser();
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { conversationId, isTyping } = await request.json();
 
-    // Get all OTHER participants (don't send typing to self)
-    const conversation = await conversationService.getConversation(
-      conversationId
-    );
-    const otherParticipantIds = conversation.participants
-      .map((p) => p.id)
-      .filter((id) => id !== userId);
+    // Verify user is a participant in this conversation
+    const conversation = await conversationService.getConversation(conversationId);
+    if (!conversation) {
+      return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
+    }
 
-    // USER-CENTRIC: Publish to each other participant's typing channel
-    await publishToUsers(otherParticipantIds, "/typing", {
+    if (!conversation.participants.includes(auth.userId)) {
+      return NextResponse.json(
+        { error: "Forbidden: You are not a participant in this conversation" },
+        { status: 403 }
+      );
+    }
+
+    // Get all OTHER participants (don't send typing to self)
+    const otherParticipantIds = conversation.participants.filter(
+      (id) => id !== auth.userId
+    );
+
+    // Publish to /chats channel (same as messages) for unified subscription
+    await publishToUsers(otherParticipantIds, "/chats", {
       type: isTyping ? "USER_TYPING" : "USER_STOPPED_TYPING",
       data: {
-        userId,
-        conversationId, // Include so client knows which conversation
+        userId: auth.userId,
+        conversationId,
       },
     });
 
@@ -1094,7 +1168,7 @@ export async function POST(request: NextRequest) {
 
 ### Step 3.3: Create useMessages Hook (User-Centric)
 
-This hook uses **user-centric subscriptions**. The user subscribes to their own channel once, and filters messages by conversationId when displaying a specific chat.
+This hook uses **user-centric subscriptions**. The user subscribes to their `/chats/{userId}` channel once, which receives both messages AND typing indicators. This simplifies the subscription model.
 
 Create `src/hooks/useMessages.ts`:
 
@@ -1102,11 +1176,9 @@ Create `src/hooks/useMessages.ts`:
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import {
-  subscribeToUserMessages,
-  subscribeToUserTyping,
-} from "@/lib/appsync-client";
+import { subscribeToUserMessages } from "@/lib/appsync-client";
 import type {
+  ChatEvent,
   MessageSentEvent,
   UserTypingEvent,
   UserStoppedTypingEvent,
@@ -1145,119 +1217,83 @@ export function useMessages({
 
   const typingTimeoutRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
-  // USER-CENTRIC: Subscribe to the user's channel, not the conversation
-  // This subscription is stable - it doesn't change when switching conversations
+  // USER-CENTRIC: Subscribe to /chats/{userId} for BOTH messages AND typing
+  // This single subscription handles all chat events
   useEffect(() => {
     if (!userId) return;
 
-    let messageSubscription: { close: () => void } | null = null;
-    let typingSubscription: { close: () => void } | null = null;
+    let subscription: { close: () => void } | null = null;
 
     const subscribe = async () => {
       try {
-        // Subscribe to ALL messages for this user
-        messageSubscription = await subscribeToUserMessages(
+        // Single subscription for messages AND typing events
+        subscription = await subscribeToUserMessages(
           userId,
-          (event) => {
+          (event: ChatEvent) => {
+            // Handle message events
             if (event.type === "MESSAGE_SENT") {
               const messageEvent = event as MessageSentEvent;
               const newMessage = messageEvent.data;
 
-              // Only process messages for the current conversation
-              // (Other conversations will be handled by their own component instances)
               if (newMessage.conversationId !== conversationId) {
                 // Could emit a notification for other chats here
                 return;
               }
 
               setMessages((prev) => {
-                // Check for duplicate (by messageId or tempId)
                 const exists = prev.some(
                   (m) => m.messageId === newMessage.messageId
                 );
                 if (exists) return prev;
-
                 return [...prev, newMessage];
               });
 
               onNewMessage?.(newMessage);
             }
-          },
-          (err) => setError(err)
-        );
 
-        // Subscribe to ALL typing events for this user
-        typingSubscription = await subscribeToUserTyping(
-          userId,
-          (event) => {
-            const typingEvent = event as
-              | UserTypingEvent
-              | UserStoppedTypingEvent;
-            const { userId: typingUserId, conversationId: typingConvId } =
-              typingEvent.data;
+            // Handle typing events (now on same channel)
+            if (event.type === "USER_TYPING" || event.type === "USER_STOPPED_TYPING") {
+              const typingEvent = event as UserTypingEvent | UserStoppedTypingEvent;
+              const { userId: typingUserId, conversationId: typingConvId } = typingEvent.data;
 
-            // Only show typing for current conversation
-            if (typingConvId !== conversationId) return;
+              if (typingConvId !== conversationId) return;
 
-            if (event.type === "USER_TYPING") {
-              // Add or update typing user
-              setTypingUsers((prev) => {
-                const existing = prev.find(
-                  (u) =>
-                    u.userId === typingUserId &&
-                    u.conversationId === typingConvId
+              if (event.type === "USER_TYPING") {
+                setTypingUsers((prev) => {
+                  const existing = prev.find(
+                    (u) => u.userId === typingUserId && u.conversationId === typingConvId
+                  );
+                  if (existing) {
+                    return prev.map((u) =>
+                      u.userId === typingUserId && u.conversationId === typingConvId
+                        ? { ...u, timestamp: Date.now() }
+                        : u
+                    );
+                  }
+                  return [...prev, { userId: typingUserId, conversationId: typingConvId, timestamp: Date.now() }];
+                });
+
+                // Clear after 3 seconds if no update
+                const key = `${typingUserId}-${typingConvId}`;
+                const existingTimeout = typingTimeoutRef.current.get(key);
+                if (existingTimeout) clearTimeout(existingTimeout);
+
+                typingTimeoutRef.current.set(
+                  key,
+                  setTimeout(() => {
+                    setTypingUsers((prev) =>
+                      prev.filter((u) => !(u.userId === typingUserId && u.conversationId === typingConvId))
+                    );
+                  }, 3000)
                 );
-                if (existing) {
-                  return prev.map((u) =>
-                    u.userId === typingUserId &&
-                    u.conversationId === typingConvId
-                      ? { ...u, timestamp: Date.now() }
-                      : u
-                  );
-                }
-                return [
-                  ...prev,
-                  {
-                    userId: typingUserId,
-                    conversationId: typingConvId,
-                    timestamp: Date.now(),
-                  },
-                ];
-              });
-
-              // Clear after 3 seconds if no update
-              const key = `${typingUserId}-${typingConvId}`;
-              const existingTimeout = typingTimeoutRef.current.get(key);
-              if (existingTimeout) clearTimeout(existingTimeout);
-
-              typingTimeoutRef.current.set(
-                key,
-                setTimeout(() => {
-                  setTypingUsers((prev) =>
-                    prev.filter(
-                      (u) =>
-                        !(
-                          u.userId === typingUserId &&
-                          u.conversationId === typingConvId
-                        )
-                    )
-                  );
-                }, 3000)
-              );
-            } else {
-              // Remove typing user
-              setTypingUsers((prev) =>
-                prev.filter(
-                  (u) =>
-                    !(
-                      u.userId === typingUserId &&
-                      u.conversationId === typingConvId
-                    )
-                )
-              );
-              const key = `${typingUserId}-${typingConvId}`;
-              const timeout = typingTimeoutRef.current.get(key);
-              if (timeout) clearTimeout(timeout);
+              } else {
+                setTypingUsers((prev) =>
+                  prev.filter((u) => !(u.userId === typingUserId && u.conversationId === typingConvId))
+                );
+                const key = `${typingUserId}-${typingConvId}`;
+                const timeout = typingTimeoutRef.current.get(key);
+                if (timeout) clearTimeout(timeout);
+              }
             }
           },
           (err) => setError(err)
@@ -1271,10 +1307,8 @@ export function useMessages({
 
     subscribe();
 
-    // Cleanup: close subscriptions when unmounting
     return () => {
-      messageSubscription?.close();
-      typingSubscription?.close();
+      subscription?.close();
       typingTimeoutRef.current.forEach((timeout) => clearTimeout(timeout));
     };
   }, [userId]); // Note: Only depends on userId, not conversationId!
@@ -1356,10 +1390,11 @@ export function useMessages({
 
 **Key differences from per-conversation approach:**
 
-1. **Single subscription** - Subscribes to `/chats/{userId}` once, not `/chats/{conversationId}` for each chat
-2. **Filters by conversationId** - Incoming messages are filtered to show only the current conversation
-3. **Stable subscription** - The WebSocket doesn't reconnect when switching conversations
-4. **Pass userId** - The hook now requires the current user's ID for the subscription
+1. **Single subscription** - Subscribes to `/chats/{userId}` once for BOTH messages AND typing
+2. **Unified channel** - Messages and typing indicators arrive on the same channel
+3. **Filters by conversationId** - Incoming events are filtered to show only the current conversation
+4. **Stable subscription** - The WebSocket doesn't reconnect when switching conversations
+5. **Pass userId** - The hook requires the current user's ID for the subscription
 
 ---
 
@@ -1373,24 +1408,27 @@ Create `src/app/api/calls/initiate/route.ts`:
 import { NextRequest, NextResponse } from "next/server";
 import { callManager } from "@/lib/socket/callManager";
 import { publishEvent } from "@/lib/appsync-client";
-import { runWithAmplifyServerContext } from "@/lib/amplify/amplify-server-utils";
-import { fetchAuthSession } from "aws-amplify/auth/server";
-import { cookies } from "next/headers";
+import { getAuthenticatedUser, verifyUserMatch } from "@/lib/auth/api-auth";
 import type { CallType } from "@/types/database";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await runWithAmplifyServerContext({
-      nextServerContext: { cookies },
-      operation: (contextSpec) => fetchAuthSession(contextSpec),
-    });
-
-    const callerId = session.tokens?.accessToken?.payload?.sub as string;
-    if (!callerId) {
+    // Authenticate the request
+    const auth = await getAuthenticatedUser();
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { recipientId, callerName, callType } = await request.json();
+    const body = await request.json();
+    const { recipientId, callerName, callType } = body;
+
+    // Verify the initiatedBy matches the authenticated user (if provided)
+    if (!verifyUserMatch(body.initiatedBy, auth.userId)) {
+      return NextResponse.json(
+        { error: "Forbidden: Cannot initiate calls as another user" },
+        { status: 403 }
+      );
+    }
 
     if (!recipientId || !callerName || !callType) {
       return NextResponse.json(
@@ -1402,12 +1440,12 @@ export async function POST(request: NextRequest) {
     // Create call record (status: RINGING)
     const call = await callManager.initiateCall({
       callType: callType as CallType,
-      initiatedBy: callerId,
-      participantIds: [recipientId, callerId],
+      initiatedBy: auth.userId, // Use authenticated userId
+      participantIds: [recipientId, auth.userId],
     });
 
     // Notify caller that call is ringing
-    await publishEvent(`/users/${callerId}`, {
+    await publishEvent(`/users/${auth.userId}`, {
       type: "CALL_RINGING",
       data: {
         sessionId: call.sessionId,
@@ -1420,7 +1458,7 @@ export async function POST(request: NextRequest) {
       type: "INCOMING_CALL",
       data: {
         sessionId: call.sessionId,
-        callerId,
+        callerId: auth.userId,
         callerName,
         callType,
       },
@@ -1451,19 +1489,13 @@ Create `src/app/api/calls/accept/route.ts`:
 import { NextRequest, NextResponse } from "next/server";
 import { callManager } from "@/lib/socket/callManager";
 import { publishEvent } from "@/lib/appsync-client";
-import { runWithAmplifyServerContext } from "@/lib/amplify/amplify-server-utils";
-import { fetchAuthSession } from "aws-amplify/auth/server";
-import { cookies } from "next/headers";
+import { getAuthenticatedUser } from "@/lib/auth/api-auth";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await runWithAmplifyServerContext({
-      nextServerContext: { cookies },
-      operation: (contextSpec) => fetchAuthSession(contextSpec),
-    });
-
-    const recipientId = session.tokens?.accessToken?.payload?.sub as string;
-    if (!recipientId) {
+    // Authenticate the request
+    const auth = await getAuthenticatedUser();
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -1479,8 +1511,8 @@ export async function POST(request: NextRequest) {
     // Create Chime meeting and join both parties
     const result = await callManager.acceptAndConnectCall({
       sessionId,
-      recipientId,
-      recipientName: recipientId, // TODO: Get from user service
+      recipientId: auth.userId, // Use authenticated userId
+      recipientName: auth.userId, // TODO: Get from user service
       callerId,
       callerName,
     });
@@ -1497,7 +1529,7 @@ export async function POST(request: NextRequest) {
         type: "CALL_CONNECTED",
         data: connectionData,
       }),
-      publishEvent(`/users/${recipientId}`, {
+      publishEvent(`/users/${auth.userId}`, {
         type: "CALL_CONNECTED",
         data: connectionData,
       }),
@@ -1527,33 +1559,27 @@ Create `src/app/api/calls/reject/route.ts`:
 import { NextRequest, NextResponse } from "next/server";
 import { callManager } from "@/lib/socket/callManager";
 import { publishEvent } from "@/lib/appsync-client";
-import { runWithAmplifyServerContext } from "@/lib/amplify/amplify-server-utils";
-import { fetchAuthSession } from "aws-amplify/auth/server";
-import { cookies } from "next/headers";
+import { getAuthenticatedUser } from "@/lib/auth/api-auth";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await runWithAmplifyServerContext({
-      nextServerContext: { cookies },
-      operation: (contextSpec) => fetchAuthSession(contextSpec),
-    });
-
-    const recipientId = session.tokens?.accessToken?.payload?.sub as string;
-    if (!recipientId) {
+    // Authenticate the request
+    const auth = await getAuthenticatedUser();
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { sessionId, callerId } = await request.json();
 
     // Update call record
-    await callManager.rejectCall(sessionId, recipientId);
+    await callManager.rejectCall(sessionId, auth.userId);
 
     // Notify caller
     await publishEvent(`/users/${callerId}`, {
       type: "CALL_REJECTED",
       data: {
         sessionId,
-        rejectedBy: recipientId,
+        rejectedBy: auth.userId,
       },
     });
 
@@ -1574,19 +1600,13 @@ Create `src/app/api/calls/end/route.ts`:
 import { NextRequest, NextResponse } from "next/server";
 import { callManager } from "@/lib/socket/callManager";
 import { publishEvent } from "@/lib/appsync-client";
-import { runWithAmplifyServerContext } from "@/lib/amplify/amplify-server-utils";
-import { fetchAuthSession } from "aws-amplify/auth/server";
-import { cookies } from "next/headers";
+import { getAuthenticatedUser } from "@/lib/auth/api-auth";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await runWithAmplifyServerContext({
-      nextServerContext: { cookies },
-      operation: (contextSpec) => fetchAuthSession(contextSpec),
-    });
-
-    const userId = session.tokens?.accessToken?.payload?.sub as string;
-    if (!userId) {
+    // Authenticate the request
+    const auth = await getAuthenticatedUser();
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -1602,7 +1622,7 @@ export async function POST(request: NextRequest) {
           type: "CALL_ENDED",
           data: {
             sessionId,
-            endedBy: userId,
+            endedBy: auth.userId,
           },
         })
       )
@@ -1622,37 +1642,31 @@ Create `src/app/api/calls/leave/route.ts`:
 import { NextRequest, NextResponse } from "next/server";
 import { callManager } from "@/lib/socket/callManager";
 import { publishEvent } from "@/lib/appsync-client";
-import { runWithAmplifyServerContext } from "@/lib/amplify/amplify-server-utils";
-import { fetchAuthSession } from "aws-amplify/auth/server";
-import { cookies } from "next/headers";
+import { getAuthenticatedUser } from "@/lib/auth/api-auth";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await runWithAmplifyServerContext({
-      nextServerContext: { cookies },
-      operation: (contextSpec) => fetchAuthSession(contextSpec),
-    });
-
-    const userId = session.tokens?.accessToken?.payload?.sub as string;
-    if (!userId) {
+    // Authenticate the request
+    const auth = await getAuthenticatedUser();
+    if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { sessionId } = await request.json();
 
     // Update participant status to LEFT
-    const call = await callManager.leaveCall(sessionId, userId);
+    const call = await callManager.leaveCall(sessionId, auth.userId);
 
     // Notify other participants
     await Promise.all(
       call.participants
-        .filter((p) => p.userId !== userId)
+        .filter((p) => p.userId !== auth.userId)
         .map((participant) =>
           publishEvent(`/users/${participant.userId}`, {
             type: "PARTICIPANT_LEFT",
             data: {
               sessionId,
-              userId,
+              userId: auth.userId,
             },
           })
         )

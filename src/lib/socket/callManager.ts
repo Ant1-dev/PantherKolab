@@ -68,14 +68,12 @@ export const callManager = {
   /**
    * Accept call and create Chime meeting
    * Called when recipient accepts the call
-   * Atomically: creates meeting, updates call record, creates attendees for both parties
+   * Atomically: creates meeting, updates call record, creates attendees for all parties
+   * Works for both DIRECT (2 participants) and GROUP (N participants) calls
    */
   async acceptAndConnectCall(data: {
     sessionId: string;
     recipientId: string;
-    recipientName: string;
-    callerId: string;
-    callerName: string;
   }): Promise<{
     call: Call;
     meeting: Meeting;
@@ -120,48 +118,39 @@ export const callManager = {
         meeting.Meeting.MeetingId
       );
 
-      // 4. Create attendees for both caller and recipient
-      const callerClientId = generateClientId();
-      const recipientClientId = generateClientId();
+      // 4. Create attendees for all participants (works for both direct and group calls)
+      const attendees: Record<string, Attendee> = {};
 
-      const callerAttendee = await chime.createAttendee({
-        MeetingId: meeting.Meeting.MeetingId,
-        ExternalUserId: `${data.callerName}#${callerClientId}`,
-      });
+      for (const participant of call.participants) {
+        const clientId = generateClientId();
+        const attendeeResponse = await chime.createAttendee({
+          MeetingId: meeting.Meeting.MeetingId,
+          ExternalUserId: `${participant.userId}#${clientId}`,
+        });
 
-      const recipientAttendee = await chime.createAttendee({
-        MeetingId: meeting.Meeting.MeetingId,
-        ExternalUserId: `${data.recipientName}#${recipientClientId}`,
-      });
+        if (attendeeResponse.Attendee) {
+          attendees[participant.userId] = attendeeResponse.Attendee;
 
-      // 5. Update participant statuses to JOINED
-      await callService.updateParticipantStatus(
-        data.sessionId,
-        data.callerId,
-        "JOINED",
-        callerAttendee.Attendee?.AttendeeId
-      );
+          // Update participant status to JOINED
+          await callService.updateParticipantStatus(
+            data.sessionId,
+            participant.userId,
+            "JOINED",
+            attendeeResponse.Attendee.AttendeeId
+          );
+        }
+      }
 
-      await callService.updateParticipantStatus(
-        data.sessionId,
-        data.recipientId,
-        "JOINED",
-        recipientAttendee.Attendee?.AttendeeId
-      );
-
-      // 6. Update call status to ACTIVE
+      // 5. Update call status to ACTIVE
       await callService.updateCallStatus(data.sessionId, "ACTIVE");
 
-      // 7. Get updated call record
+      // 6. Get updated call record
       const updatedCall = await callService.getCall(data.sessionId);
 
       return {
         call: updatedCall!,
         meeting: meeting.Meeting,
-        attendees: {
-          [data?.callerId]: callerAttendee?.Attendee as Attendee,
-          [data?.recipientId]: recipientAttendee?.Attendee as Attendee,
-        },
+        attendees,
       };
     } catch (error) {
       console.error("Error in acceptAndConnectCall:", error);
@@ -216,6 +205,34 @@ export const callManager = {
     }
     return call;
   },
+  /**
+   * Cancel a ringing call (caller only)
+   * Used when caller hangs up before recipient answers
+   */
+  async cancelCall(sessionId: string, callerId: string): Promise<Call> {
+    const call = await callService.getCall(sessionId);
+    if (!call) {
+      throw new Error("Call not found");
+    }
+
+    // Only the caller (initiator) can cancel
+    if (call.initiatedBy !== callerId) {
+      throw new Error("Only the caller can cancel a ringing call");
+    }
+
+    // Can only cancel calls that are still ringing
+    if (call.status !== "RINGING") {
+      throw new Error(
+        `Cannot cancel call. Current status: ${call.status}`
+      );
+    }
+
+    // Update call status to CANCELLED
+    await callService.updateCallStatus(sessionId, "CANCELLED");
+
+    return call;
+  },
+
   /**
    * End an active call
    */

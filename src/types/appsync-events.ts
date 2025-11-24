@@ -147,6 +147,9 @@ export type MessageEvent =
 
 export type TypingEvent = UserTypingEvent | UserStoppedTypingEvent;
 
+// ChatEvent combines messages and typing - all sent to /chats/{userId}
+export type ChatEvent = MessageEvent | TypingEvent;
+
 export type CallEvent =
   | IncomingCallEvent
   | CallRingingEvent
@@ -156,4 +159,4 @@ export type CallEvent =
   | ParticipantLeftEvent
   | CallErrorEvent;
 
-export type AppSyncEventUnion = MessageEvent | TypingEvent | CallEvent;
+export type AppSyncEventUnion = ChatEvent | CallEvent;

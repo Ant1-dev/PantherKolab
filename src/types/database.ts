@@ -196,7 +196,7 @@ export type CallType = 'DIRECT' | 'GROUP'
 /**
  * Call Status
  */
-export type CallStatus = 'RINGING' | 'ACTIVE' | 'ENDED' | 'MISSED' | 'REJECTED'
+export type CallStatus = 'RINGING' | 'ACTIVE' | 'ENDED' | 'MISSED' | 'REJECTED' | 'CANCELLED'
 
 /**
  * Create Call Input

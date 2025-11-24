@@ -35,6 +35,27 @@ if (typeof window !== "undefined") {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Storage key for pending profile data
+const PENDING_PROFILE_KEY = "pantherkolab_pending_profile";
+
+// Helper to store pending profile data during registration
+function storePendingProfile(data: { firstName: string; lastName: string; email: string }) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(PENDING_PROFILE_KEY, JSON.stringify(data));
+  }
+}
+
+// Helper to get and clear pending profile data
+function getPendingProfile(): { firstName: string; lastName: string; email: string } | null {
+  if (typeof window === "undefined") return null;
+  const data = localStorage.getItem(PENDING_PROFILE_KEY);
+  if (data) {
+    localStorage.removeItem(PENDING_PROFILE_KEY);
+    return JSON.parse(data);
+  }
+  return null;
+}
+
 // Provider Component
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -47,11 +68,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, []);
 
+  /**
+   * Create DynamoDB profile for authenticated user if it doesn't exist
+   */
+  const ensureUserProfile = async () => {
+    try {
+      // Get pending profile data from registration
+      const pendingProfile = getPendingProfile();
+      if (!pendingProfile) {
+        // No pending profile - user already has one or logged in without registering
+        return;
+      }
+
+      // Create the profile via authenticated API route
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // Include cookies for auth
+        body: JSON.stringify({
+          firstName: pendingProfile.firstName,
+          lastName: pendingProfile.lastName,
+        }),
+      });
+
+      if (response.ok) {
+        console.log("[Auth] User profile created successfully");
+      } else if (response.status === 409) {
+        // Profile already exists - that's fine
+        console.log("[Auth] User profile already exists");
+      } else {
+        const data = await response.json();
+        console.error("[Auth] Failed to create user profile:", data.error);
+      }
+    } catch (err) {
+      console.error("[Auth] Error creating user profile:", err);
+    }
+  };
+
   const checkAuth = async () => {
     try {
       const currentUser = await getCurrentUser();
       setUser(currentUser);
       setIsAuthenticated(true);
+
+      // Ensure user has a DynamoDB profile (creates one if pending from registration)
+      await ensureUserProfile();
     } catch {
       setUser(null);
       setIsAuthenticated(false);
@@ -103,15 +164,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (result.userId) {
-        await fetch("/api/auth/signup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: result.userId,
-            email: email,
-            firstName: name,
-            lastName: additionalAttributes.family_name || "",
-          }),
+        // Store profile data for creation after login
+        // The DynamoDB profile will be created when the user logs in
+        // This is secure because the API route uses the authenticated userId
+        storePendingProfile({
+          firstName: name,
+          lastName: additionalAttributes.family_name || "",
+          email: email,
         });
       }
     } catch (err: any) {
