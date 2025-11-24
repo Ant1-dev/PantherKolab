@@ -35,11 +35,10 @@ export async function POST(request: NextRequest) {
 
     // Notify all recipients that the call was cancelled
     await publishToUsers(recipientIds, "/users", {
-      type: "CALL_ENDED",
+      type: "CALL_CANCELLED",
       data: {
         sessionId,
-        endedBy: auth.userId,
-        reason: "CANCELLED",
+        cancelledBy: auth.userId,
       },
     });
 

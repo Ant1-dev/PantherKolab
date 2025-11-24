@@ -32,6 +32,7 @@ export type CallEventType =
   | "CALL_CONNECTED"
   | "CALL_REJECTED"
   | "CALL_ENDED"
+  | "CALL_CANCELLED"
   | "CALL_ERROR"
   | "PARTICIPANT_LEFT";
 

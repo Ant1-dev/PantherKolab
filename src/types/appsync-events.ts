@@ -136,6 +136,14 @@ export interface CallErrorEvent {
   };
 }
 
+export interface CallCancelledEvent {
+  type: "CALL_CANCELLED";
+  data: {
+    sessionId: string;
+    cancelledBy: string;
+  };
+}
+
 // ============================================================================
 // Union Types
 // ============================================================================
@@ -156,6 +164,7 @@ export type CallEvent =
   | CallConnectedEvent
   | CallRejectedEvent
   | CallEndedEvent
+  | CallCancelledEvent
   | ParticipantLeftEvent
   | CallErrorEvent;
 
