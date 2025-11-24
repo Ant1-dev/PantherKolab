@@ -51,13 +51,18 @@ export async function POST(request: NextRequest) {
     const participantIds = call.participants.map((p) => p.userId);
 
     // Notify all participants that the call has ended
-    await publishToUsers(participantIds, "/calls", {
-      type: "CALL_ENDED",
-      data: {
-        sessionId,
-        endedBy: auth.userId,
+    await publishToUsers(
+      participantIds,
+      "/calls",
+      {
+        type: "CALL_ENDED",
+        data: {
+          sessionId,
+          endedBy: auth.userId,
+        },
       },
-    });
+      auth.idToken
+    );
 
     console.log(`[Calls] Call ended: ${sessionId} by ${auth.userId}`);
 

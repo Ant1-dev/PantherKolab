@@ -122,12 +122,17 @@ export async function POST(req: NextRequest) {
     const mediaType = "AUDIO" as const;
 
     // Notify the caller that the call is ringing
-    await publishToUsers([auth.userId], "/calls", {
-      type: "CALL_RINGING",
-      data: {
-        sessionId: call.sessionId,
+    await publishToUsers(
+      [auth.userId],
+      "/calls",
+      {
+        type: "CALL_RINGING",
+        data: {
+          sessionId: call.sessionId,
+        },
       },
-    });
+      auth.idToken
+    );
 
     // Notify all recipients but the caller about the incoming call
     await publishToUsers(
@@ -141,7 +146,8 @@ export async function POST(req: NextRequest) {
           callerName,
           callType: mediaType,
         },
-      }
+      },
+      auth.idToken
     );
 
     return NextResponse.json({

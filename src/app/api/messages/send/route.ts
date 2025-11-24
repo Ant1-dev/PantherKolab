@@ -70,13 +70,18 @@ export async function POST(request: NextRequest) {
     // (conversation was already fetched above for participant check)
     // For a 2-person chat, this publishes to 2 channels
     // For a 10-person group, this publishes to 10 channels
-    await publishToUsers(conversation.participants, "/chats", {
-      type: "MESSAGE_SENT",
-      data: {
-        ...message,
-        tempId, // Include tempId for optimistic update matching
+    await publishToUsers(
+      conversation.participants,
+      "/chats",
+      {
+        type: "MESSAGE_SENT",
+        data: {
+          ...message,
+          tempId, // Include tempId for optimistic update matching
+        },
       },
-    });
+      auth.idToken
+    );
 
     return NextResponse.json({
       success: true,

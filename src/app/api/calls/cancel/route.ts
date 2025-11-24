@@ -34,13 +34,18 @@ export async function POST(request: NextRequest) {
       .map((p) => p.userId);
 
     // Notify all recipients that the call was cancelled
-    await publishToUsers(recipientIds, "/calls", {
-      type: "CALL_CANCELLED",
-      data: {
-        sessionId,
-        cancelledBy: auth.userId,
+    await publishToUsers(
+      recipientIds,
+      "/calls",
+      {
+        type: "CALL_CANCELLED",
+        data: {
+          sessionId,
+          cancelledBy: auth.userId,
+        },
       },
-    });
+      auth.idToken
+    );
 
     console.log(`[Calls] Call cancelled: ${sessionId}`);
 

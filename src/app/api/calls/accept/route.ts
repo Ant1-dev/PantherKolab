@@ -54,10 +54,15 @@ export async function POST(request: NextRequest) {
     const participantIds = result.call.participants.map((p) => p.userId);
 
     // Notify all participants that the call is connected
-    await publishToUsers(participantIds, "/calls", {
-      type: "CALL_CONNECTED",
-      data: connectionData,
-    });
+    await publishToUsers(
+      participantIds,
+      "/calls",
+      {
+        type: "CALL_CONNECTED",
+        data: connectionData,
+      },
+      auth.idToken
+    );
 
     console.log(`[Calls] Call accepted and connected: ${sessionId}`);
 

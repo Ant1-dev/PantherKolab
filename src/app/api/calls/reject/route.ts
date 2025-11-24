@@ -47,13 +47,18 @@ export async function POST(request: NextRequest) {
     await callManager.rejectCall(sessionId, auth.userId);
 
     // Notify the caller that the call was rejected
-    await publishToUsers([call.initiatedBy], "/calls", {
-      type: "CALL_REJECTED",
-      data: {
-        sessionId,
-        rejectedBy: auth.userId,
+    await publishToUsers(
+      [call.initiatedBy],
+      "/calls",
+      {
+        type: "CALL_REJECTED",
+        data: {
+          sessionId,
+          rejectedBy: auth.userId,
+        },
       },
-    });
+      auth.idToken
+    );
 
     console.log(`[Calls] Call rejected: ${sessionId} by ${auth.userId}`);
 
