@@ -9,6 +9,7 @@ export interface AuthResult {
   userId: string;
   email?: string;
   accessToken: string;
+  idToken: string;
 }
 
 /**
@@ -34,9 +35,10 @@ export async function getAuthenticatedUser(): Promise<AuthResult | null> {
     });
 
     const accessToken = session.tokens?.accessToken;
+    const idToken = session.tokens?.idToken;
     const userId = accessToken?.payload?.sub as string | undefined;
 
-    if (!userId || !accessToken) {
+    if (!userId || !accessToken || !idToken) {
       return null;
     }
 
@@ -44,6 +46,7 @@ export async function getAuthenticatedUser(): Promise<AuthResult | null> {
       userId,
       email: accessToken.payload?.email as string | undefined,
       accessToken: accessToken.toString(),
+      idToken: idToken.toString(),
     };
   } catch (error) {
     console.error("[Auth] Failed to get authenticated user:", error);

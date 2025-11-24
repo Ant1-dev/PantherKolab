@@ -58,19 +58,14 @@ export async function POST(request: NextRequest) {
 
     // Notify other participants that this user left
     if (otherParticipantIds.length > 0) {
-      await publishToUsers(
-        otherParticipantIds,
-        "/users",
-        {
-          type: "PARTICIPANT_LEFT",
-          data: {
-            sessionId,
-            userId: auth.userId,
-            newOwnerId: transferredOwnerId, // null if no ownership transfer occurred
-          },
+      await publishToUsers(otherParticipantIds, "/calls", {
+        type: "PARTICIPANT_LEFT",
+        data: {
+          sessionId,
+          userId: auth.userId,
+          newOwnerId: transferredOwnerId, // null if no ownership transfer occurred
         },
-        auth.accessToken
-      );
+      });
     }
 
     console.log(

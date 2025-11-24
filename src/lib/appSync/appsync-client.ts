@@ -107,71 +107,47 @@ export async function subscribeToChannels<T = unknown>(
 // ============================================================================
 // With user-centric channels, each user subscribes to their own channel
 // instead of subscribing to each conversation. This reduces subscription
-// management from 20-40+ channels to just 3-4 fixed channels.
+// management from 20-40+ channels to just 2 fixed channels:
+// - /chats/{userId} for all message and typing events
+// - /calls/{userId} for all call events
 
 /**
- * Subscribe to ALL messages for the current user (user-centric model)
+ * Subscribe to ALL chat events for the current user (messages + typing)
  *
- * Messages from all conversations arrive on this single channel.
+ * Messages and typing events from all conversations arrive on this single channel.
  * Filter by conversationId in the event data if needed.
  */
-export async function subscribeToUserMessages(
+export async function subscribeToUserChats(
   userId: string,
-  onMessage: (event: AppSyncEvent) => void,
+  onEvent: (event: AppSyncEvent) => void,
   onError?: (error: Error) => void
 ): Promise<{ close: () => void }> {
   return subscribeToChannel(`/chats/${userId}`, {
-    onEvent: onMessage,
+    onEvent,
     onError,
   });
 }
 
 /**
- * Subscribe to ALL typing indicators for the current user
+ * Subscribe to ALL call events for the current user
  *
- * Typing events from all conversations arrive on this single channel.
- * Filter by conversationId in the event data if needed.
+ * Includes: INCOMING_CALL, CALL_RINGING, CALL_CONNECTED, CALL_REJECTED,
+ * CALL_ENDED, CALL_CANCELLED, PARTICIPANT_LEFT, CALL_ERROR
  */
-export async function subscribeToUserTyping(
+export async function subscribeToUserCalls(
   userId: string,
-  onTyping: (
-    event: AppSyncEvent<{ userId: string; conversationId: string }>
-  ) => void,
+  onEvent: (event: AppSyncEvent) => void,
   onError?: (error: Error) => void
 ): Promise<{ close: () => void }> {
-  return subscribeToChannel(`/typing/${userId}`, {
-    onEvent: onTyping,
+  return subscribeToChannel(`/calls/${userId}`, {
+    onEvent,
     onError,
   });
 }
 
-/**
- * Subscribe to direct notifications (incoming calls, call status)
- */
-export async function subscribeToUserNotifications(
-  userId: string,
-  onNotification: (event: AppSyncEvent<unknown>) => void,
-  onError?: (error: Error) => void
-): Promise<{ close: () => void }> {
-  return subscribeToChannel(`/users/${userId}`, {
-    onEvent: onNotification,
-    onError,
-  });
-}
-
-/**
- * Subscribe to call session events (during active call)
- */
-export async function subscribeToCallSession(
-  sessionId: string,
-  onEvent: (event: AppSyncEvent<unknown>) => void,
-  onError?: (error: Error) => void
-): Promise<{ close: () => void }> {
-  return subscribeToChannel(`/calls/${sessionId}`, {
-    onEvent: onEvent,
-    onError,
-  });
-}
+// Legacy aliases for backwards compatibility
+export const subscribeToUserMessages = subscribeToUserChats;
+export const subscribeToUserNotifications = subscribeToUserCalls;
 
 // ============================================================================
 // Export
@@ -181,10 +157,12 @@ const AppSyncClient = {
   subscribeToChannel,
   subscribeToChannels,
 
-  // User-centric subscriptions
+  // User-centric subscriptions (new)
+  subscribeToUserChats,
+  subscribeToUserCalls,
+
+  // Legacy aliases
   subscribeToUserMessages,
-  subscribeToUserTyping,
   subscribeToUserNotifications,
-  subscribeToCallSession,
 };
 export default AppSyncClient;

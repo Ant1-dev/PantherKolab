@@ -168,8 +168,6 @@ export type CallEvent =
   | ParticipantLeftEvent
   | CallErrorEvent;
 
-import { DocumentType } from "@aws-amplify/core/internals/utils";
-
 export type AppSyncEventUnion = ChatEvent | CallEvent;
 
 // ============================================================================
@@ -197,7 +195,8 @@ export type CallEventType =
 
 export type EventType = MessageEventType | TypingEventType | CallEventType;
 
-export interface AppSyncEvent<T = DocumentType> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface AppSyncEvent<T = Record<string, any>> {
   type: EventType;
   data: T;
   timestamp?: string;

@@ -27,16 +27,12 @@ export async function GET() {
     }
 
     // Publish test event
-    await publishEvent(
-      "/test/api-route",
-      {
-        type: "MESSAGE_SENT",
-        data: {
-          message: "Test from Next.js API route",
-        },
+    await publishEvent("/test/api-route", {
+      type: "MESSAGE_SENT",
+      data: {
+        message: "Test from Next.js API route",
       },
-      auth.accessToken
-    );
+    });
 
     return NextResponse.json({
       success: true,
