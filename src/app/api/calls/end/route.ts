@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callManager } from "@/lib/socket/callManager";
+import { callManager } from "@/lib/chime/callManager";
 import { callService } from "@/services/callService";
 import { getAuthenticatedUser } from "@/lib/auth/api-auth";
 import { publishToUsers } from "@/lib/appSync/appsync-server-client";

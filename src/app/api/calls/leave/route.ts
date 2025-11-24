@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callManager } from "@/lib/socket/callManager";
+import { callManager } from "@/lib/chime/callManager";
 import { callService } from "@/services/callService";
 import { getAuthenticatedUser } from "@/lib/auth/api-auth";
 import { publishToUsers } from "@/lib/appSync/appsync-server-client";
@@ -74,7 +74,11 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(
-      `[Calls] User ${auth.userId} left call ${sessionId}${transferredOwnerId ? `, ownership transferred to ${transferredOwnerId}` : ""}`
+      `[Calls] User ${auth.userId} left call ${sessionId}${
+        transferredOwnerId
+          ? `, ownership transferred to ${transferredOwnerId}`
+          : ""
+      }`
     );
 
     return NextResponse.json({
