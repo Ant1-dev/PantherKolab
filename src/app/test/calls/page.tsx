@@ -9,9 +9,7 @@ import { useAuth } from "@/components/contexts/AuthContext";
 export default function MeetingUITestPage() {
   const [showMeeting, setShowMeeting] = useState(false);
   const [callType, setCallType] = useState<"DIRECT" | "GROUP">("DIRECT");
-  const [participants, setParticipants] = useState(
-    "d4e884c8-5011-70f3-e29a-5f29eb210c38"
-  );
+  const [participants, setParticipants] = useState("");
   const [meetingData, setMeetingData] = useState<MeetingData | null>(null);
 
   const auth = useAuth();
@@ -48,9 +46,7 @@ export default function MeetingUITestPage() {
   const handleParticipantLeft = useCallback(
     (sessionId: string, userId: string, newOwnerId?: string) => {
       console.log(
-        `Participant ${userId} left call ${sessionId}${
-          newOwnerId ? `, new owner: ${newOwnerId}` : ""
-        }`
+        `Participant ${userId} left call ${sessionId}${newOwnerId ? `, new owner: ${newOwnerId}` : ""}`
       );
     },
     []
@@ -233,9 +229,7 @@ export default function MeetingUITestPage() {
           {/* Connection Status */}
           <div className="mb-6 flex items-center gap-2">
             <div
-              className={`w-3 h-3 rounded-full ${
-                isConnected ? "bg-green-500" : "bg-red-500"
-              }`}
+              className={`w-3 h-3 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`}
             />
             <span className="text-sm text-gray-600">
               {isConnected ? "Connected to AppSync" : "Disconnected"}
@@ -252,9 +246,7 @@ export default function MeetingUITestPage() {
               {/* Meeting View Test */}
               <div>
                 <h3 className="font-semibold text-lg mb-4 text-gray-800">
-                  {`Call Test - User ID: ${
-                    auth.user?.userId || "Not logged in"
-                  }`}
+                  {`Call Test - User ID: ${auth.user?.userId || "Not logged in"}`}
                 </h3>
                 <p className="text-sm text-gray-600 mb-4">
                   Enter a user ID to call. Uses AppSync Events for real-time
