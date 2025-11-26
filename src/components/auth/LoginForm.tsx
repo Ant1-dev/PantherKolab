@@ -27,7 +27,7 @@ export function LoginForm() {
     try {
       await login(email, password);
       // If successful, redirect to dashboard or home
-      router.push("/dashboard");
+      router.push("/test/calls");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setLocalError(err.message || "Login failed");
