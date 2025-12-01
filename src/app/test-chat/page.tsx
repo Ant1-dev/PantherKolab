@@ -42,10 +42,10 @@ export default function TestChatPage() {
   };
 
   return (
-    <div className="h-screen flex bg-white">
+    <div className="h-screen flex bg-white font-sans">
       {/* Left Sidebar - Navigation */}
       <div className="w-23 bg-[#0066CC] flex flex-col items-center py-6">
-        <button className="w-10 h-10 bg-[#FFB300] rounded-full flex items-center justify-center mb-8 font-bold text-gray-800 text-sm hover:bg-[#FFA000] transition-colors">
+        <button className="w-10 h-10 bg-[#FFB300] rounded-full flex items-center justify-center mb-8 font-semibold text-gray-800 text-sm hover:bg-[#FFA000] transition-colors">
           {chatData.loggedInUser.initials}
         </button>
 

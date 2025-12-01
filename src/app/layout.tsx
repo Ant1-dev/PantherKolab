@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import "@/lib/amplify/amplify-config";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Bitter, Fira_Code } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/contexts/AuthContext";
 import { ConfigureAmplifyClientSide } from "@/lib/amplify/amplify-config";
@@ -14,6 +14,18 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const bitter = Bitter({
+  variable: "--font-bitter",
+  subsets: ["latin"],
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
+});
+
+const firaCode = Fira_Code({
+  variable: "--font-fira-code",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -29,20 +41,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin={"anonymous"}
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Bitter:ital,wght@0,100..900;1,100..900&family=Fira+Code:wght@300..700&display=swap"
-          rel="stylesheet"
-        ></link>
-      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${bitter.variable} ${firaCode.variable} antialiased`}
       >
         <ConfigureAmplifyClientSide />
         <AuthProvider>{children}</AuthProvider>

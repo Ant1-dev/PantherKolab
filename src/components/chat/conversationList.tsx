@@ -49,12 +49,7 @@ export default function ConversationList({
     <div className="w-[400px] bg-white border-r border-gray-200 flex flex-col">
       {/* PantherKolab Header */}
       <div className="px-6 pt-8 pb-12">
-        <h1
-          className="text-3xl font-bold text-gray-900"
-          style={{ fontFamily: "serif" }}
-        >
-          PantherKolab
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900">PantherKolab</h1>
       </div>
 
       {/* Search Bar */}
