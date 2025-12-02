@@ -1,55 +1,55 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Phone, Search, MoreVertical, Send, Paperclip, Smile, X } from "lucide-react";
+import {
+  Phone,
+  Search,
+  MoreVertical,
+  Send,
+  Paperclip,
+  Smile,
+  X,
+  MessageSquare,
+} from "lucide-react";
 import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
-
-interface Message {
-  id: string;
-  senderId: string;
-  senderName: string;
-  senderAvatar: string;
-  content: string;
-  timestamp: string;
-  type: string;
-  isOwn?: boolean;
-}
-
-interface Conversation {
-  id: string;
-  name: string;
-  type: string;
-  avatar: string;
-  members?: number;
-}
+import type { Message as DBMessage, Conversation } from "@/types/database";
 
 interface MainChatAreaProps {
-  selectedConversation: Conversation;
-  messages: Message[];
+  selectedConversation: Conversation | null;
+  messages: DBMessage[];
   messageInput: string;
   onMessageInputChange: (value: string) => void;
-  onSendMessage: () => void;
+  onSendMessage: (content: string) => void;
   onToggleProfile: () => void;
   loggedInUserInitials: string;
+  isLoading?: boolean;
+  error?: string;
 }
 
 export default function MainChatArea({
   selectedConversation,
   messages,
-  messageInput,
-  onMessageInputChange,
   onSendMessage,
   onToggleProfile,
   loggedInUserInitials,
+  isLoading,
+  error,
 }: MainChatAreaProps) {
+  // Manage input state locally
+  const [messageInput, setMessageInput] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileCaption, setFileCaption] = useState("");
-  const [cursorPosition, setCursorPosition] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   // Close emoji picker when clicking outside
   useEffect(() => {
@@ -71,15 +71,24 @@ export default function MainChatArea({
     };
   }, [showEmojiPicker]);
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      onSendMessage();
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
     }
   };
 
+  const handleSendMessage = () => {
+    if (!messageInput.trim()) return;
+    onSendMessage(messageInput);
+    setMessageInput("");
+  };
+
   const handleCallClick = () => {
-    console.log("Starting call with:", selectedConversation.name);
-    // TODO: Implement call functionality
+    if (selectedConversation) {
+      console.log("Starting call with:", selectedConversation.name);
+      // TODO: Implement call functionality
+    }
   };
 
   const handleSearchClick = () => {
@@ -135,7 +144,7 @@ export default function MainChatArea({
       const text = messageInput;
       const newText = text.substring(0, start) + emoji + text.substring(end);
 
-      onMessageInputChange(newText);
+      setMessageInput(newText);
 
       // Set cursor position after emoji
       setTimeout(() => {
@@ -148,9 +157,36 @@ export default function MainChatArea({
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onMessageInputChange(e.target.value);
-    setCursorPosition(e.target.selectionStart || 0);
+    setMessageInput(e.target.value);
   };
+
+  // Format timestamp
+  const formatTimestamp = (isoString: string) => {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+
+    if (seconds < 60) return "Just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    return date.toLocaleDateString();
+  };
+
+  // Show empty state if no conversation selected
+  if (!selectedConversation) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-gray-50">
+        <div className="text-center text-gray-500">
+          <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+          <h2 className="text-2xl font-bold mb-2">PantherKolab Messages</h2>
+          <p className="text-lg">Select a conversation to start messaging</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col bg-gray-50">
@@ -160,37 +196,39 @@ export default function MainChatArea({
           {/* Avatar (larger + rounded square) */}
           <button
             onClick={() => {
-              if (selectedConversation.type === "direct") {
+              if (selectedConversation.type === "DM") {
                 onToggleProfile();
               }
             }}
             className="relative flex-shrink-0 hover:opacity-80 transition-opacity"
           >
-            {selectedConversation.type === "group" ? (
+            {selectedConversation.type === "GROUP" ? (
               <div className="w-14 h-14 rounded-lg bg-[#0066CC] flex items-center justify-center">
                 <span className="text-white font-bold text-lg tracking-wide">
-                  {selectedConversation.name.substring(0, 3).toUpperCase()}
+                  {selectedConversation.name?.substring(0, 3).toUpperCase() ||
+                    "GRP"}
                 </span>
               </div>
             ) : (
-              <img
-                src={selectedConversation.avatar}
-                alt={selectedConversation.name}
-                className="w-12 h-12 rounded-lg object-cover"
-              />
+              <div className="w-12 h-12 rounded-lg bg-[#FFB300] flex items-center justify-center">
+                <span className="text-gray-900 font-bold text-lg">
+                  {selectedConversation.name?.substring(0, 2).toUpperCase() ||
+                    "DM"}
+                </span>
+              </div>
             )}
           </button>
 
           {/* Group name + members */}
           <div className="flex flex-col">
             <h2 className="font-bold text-gray-900 text-xl leading-tight">
-              {selectedConversation.name}
+              {selectedConversation.name || "Conversation"}
             </h2>
 
-            {selectedConversation.type === "group" &&
-              selectedConversation.members && (
+            {selectedConversation.type === "GROUP" &&
+              selectedConversation.participants && (
                 <p className="text-sm text-gray-500 mt-1">
-                  {selectedConversation.members} members
+                  {selectedConversation.participants.length} members
                 </p>
               )}
           </div>
@@ -224,83 +262,115 @@ export default function MainChatArea({
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${
-              message.isOwn ? "justify-end gap-2" : "justify-start gap-3"
-            }`}
-          >
-            {/* Incoming avatar */}
-            {!message.isOwn && (
-              <button
-                onClick={onToggleProfile}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 hover:opacity-80 transition-opacity"
-                style={{ backgroundColor: "#0066CC" }}
-              >
-                {message.senderName.substring(0, 2).toUpperCase()}
-              </button>
-            )}
-
-            {/* Bubble + Name wrapper */}
-            <div
-              className={`flex flex-col max-w-md ${
-                message.isOwn ? "items-end" : "items-start"
-              }`}
-            >
-              {!message.isOwn && (
-                <button
-                  onClick={onToggleProfile}
-                  className="text-xs font-semibold text-gray-700 mb-1 hover:underline"
-                >
-                  {message.senderName}
-                </button>
-              )}
-
-              <div
-                className={`rounded-lg px-4 py-2 shadow-sm ${
-                  message.isOwn
-                    ? "bg-[#FFB300] text-gray-900"
-                    : "bg-white text-gray-900 border border-gray-200"
-                }`}
-              >
-                {message.type === "image" ? (
-                  <img
-                    src={message.content}
-                    alt="Shared image"
-                    className="rounded-lg max-w-xs"
-                  />
-                ) : (
-                  <p className="text-sm leading-relaxed">{message.content}</p>
-                )}
-              </div>
-
-              <span className="text-xs text-gray-500 mt-1">
-                {message.timestamp}
-              </span>
-            </div>
-
-            {/* OWN avatar */}
-            {message.isOwn && (
-              <button
-                onClick={onToggleProfile}
-                className="w-8 h-8 rounded-full bg-[#FFB300] flex items-center justify-center text-gray-900 text-xs font-bold flex-shrink-0 hover:opacity-80 transition-opacity"
-              >
-                {loggedInUserInitials}
-              </button>
-            )}
+        {isLoading && messages.length === 0 ? (
+          <div className="flex items-center justify-center py-20">
+            <p className="text-gray-500">Loading messages...</p>
           </div>
-        ))}
+        ) : error ? (
+          <div className="flex items-center justify-center py-20">
+            <p className="text-red-500">Error: {error}</p>
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center text-gray-500">
+              <p className="text-lg">No messages yet</p>
+              <p className="text-sm mt-2">
+                Start the conversation by sending a message
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {messages.map((message) => {
+              const isOwn = message.senderId === loggedInUserInitials;
+              const senderInitials = isOwn
+                ? loggedInUserInitials
+                : message.senderId?.substring(0, 2).toUpperCase() || "??";
+
+              return (
+                <div
+                  key={message.messageId}
+                  className={`flex ${
+                    isOwn ? "justify-end gap-2" : "justify-start gap-3"
+                  }`}
+                >
+                  {/* Incoming avatar */}
+                  {!isOwn && (
+                    <button
+                      onClick={onToggleProfile}
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 hover:opacity-80 transition-opacity"
+                      style={{ backgroundColor: "#0066CC" }}
+                    >
+                      {senderInitials}
+                    </button>
+                  )}
+
+                  {/* Bubble + Name wrapper */}
+                  <div
+                    className={`flex flex-col max-w-md ${
+                      isOwn ? "items-end" : "items-start"
+                    }`}
+                  >
+                    {!isOwn && (
+                      <button
+                        onClick={onToggleProfile}
+                        className="text-xs font-semibold text-gray-700 mb-1 hover:underline"
+                      >
+                        {message.senderId}
+                      </button>
+                    )}
+
+                    <div
+                      className={`rounded-lg px-4 py-2 shadow-sm ${
+                        isOwn
+                          ? "bg-[#FFB300] text-gray-900"
+                          : "bg-white text-gray-900 border border-gray-200"
+                      }`}
+                    >
+                      {message.type === "IMAGE" && message.mediaUrl ? (
+                        <img
+                          src={message.mediaUrl}
+                          alt="Shared image"
+                          className="rounded-lg max-w-xs"
+                        />
+                      ) : message.deleted ? (
+                        <p className="text-sm leading-relaxed italic text-gray-500">
+                          This message was deleted
+                        </p>
+                      ) : (
+                        <p className="text-sm leading-relaxed">
+                          {message.content}
+                        </p>
+                      )}
+                    </div>
+
+                    <span className="text-xs text-gray-500 mt-1">
+                      {formatTimestamp(message.timestamp)}
+                    </span>
+                  </div>
+
+                  {/* OWN avatar */}
+                  {isOwn && (
+                    <button
+                      onClick={onToggleProfile}
+                      className="w-8 h-8 rounded-full bg-[#FFB300] flex items-center justify-center text-gray-900 text-xs font-bold flex-shrink-0 hover:opacity-80 transition-opacity"
+                    >
+                      {loggedInUserInitials}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </>
+        )}
       </div>
 
       {/* Message Input */}
       <div className="bg-white border-t border-gray-200 px-6 py-4 relative">
         {/* Emoji Picker */}
         {showEmojiPicker && (
-          <div
-            ref={emojiPickerRef}
-            className="absolute bottom-20 right-6 z-50"
-          >
+          <div ref={emojiPickerRef} className="absolute bottom-20 right-6 z-50">
             <EmojiPicker onEmojiClick={handleEmojiSelect} />
           </div>
         )}
@@ -333,13 +403,14 @@ export default function MainChatArea({
             type="text"
             value={messageInput}
             onChange={handleInputChange}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyDown}
             placeholder="Type a message..."
             className="flex-1 px-4 py-3 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-[#0066CC] text-sm"
           />
           <button
-            onClick={onSendMessage}
-            className="p-3 bg-[#FFB300] hover:bg-[#FFA000] rounded-full transition-colors"
+            onClick={handleSendMessage}
+            disabled={!messageInput.trim()}
+            className="p-3 bg-[#FFB300] hover:bg-[#FFA000] rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="w-5 h-5 text-gray-900" />
           </button>

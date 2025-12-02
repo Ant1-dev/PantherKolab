@@ -110,10 +110,10 @@ export default function SignUp() {
 
     const { firstName, lastName, email, password } = formData;
     const params: SignUpParams = {
-      name: firstName,
+      name: firstName.toLowerCase(),
       email: email,
       password: password,
-      family_name: lastName,
+      family_name: lastName.toLowerCase(),
     };
 
     try {
