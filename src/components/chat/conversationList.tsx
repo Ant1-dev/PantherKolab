@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { Search, SquarePen, User, Users } from "lucide-react";
 import NewConversationDropdown from "./NewConversationDropdown";
+import { type SearchableUser } from "./utils/userSearch";
 import Image from "next/image";
 
 interface Conversation {
@@ -34,7 +35,7 @@ interface ConversationListProps {
   onTabChange: (tab: "all" | "groups" | "dms") => void;
   recentUsers: RecentUser[];
   onSelectUser: (userId: string) => void;
-  onCreateGroup: () => void;
+  onCreateGroup: (name: string, members: SearchableUser[]) => void;
 }
 
 export default function ConversationList({

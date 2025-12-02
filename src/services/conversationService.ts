@@ -167,4 +167,24 @@ export const conversationService = {
 
     return newConversation;
   },
+
+  async createGroupConversation(
+    name: string,
+    participantIds: string[],
+    createdBy: string
+  ): Promise<Conversation> {
+    console.log(`Creating group conversation "${name}" by ${createdBy}`);
+
+    // Ensure the creator is included in the participants list
+    const finalParticipants = Array.from(new Set([...participantIds, createdBy]));
+
+    const newConversation = await this.createConversation({
+      type: "GROUP",
+      name: name,
+      participants: finalParticipants,
+      createdBy: createdBy,
+    });
+
+    return newConversation;
+  },
 };

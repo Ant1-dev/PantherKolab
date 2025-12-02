@@ -5,6 +5,7 @@ import {
   UIConversation,
   convertToUIConversation,
 } from "@/components/chat/utils/conversationUtils";
+import { type SearchableUser } from "@/components/chat/utils/userSearch";
 
 export const useChat = (currentUserId: string) => {
   // State management
@@ -187,9 +188,83 @@ export const useChat = (currentUserId: string) => {
   };
 
   // Handle new group creation
-  const handleCreateGroup = () => {
-    // TODO: Navigate to group creation flow
-    console.log("Creating new group");
+  const handleCreateGroup = async (name: string, members: SearchableUser[]) => {
+    if (!name.trim() || members.length === 0) {
+      alert("Group name and at least one member are required.");
+      return;
+    }
+
+    const memberIds = members.map((m) => m.id);
+
+    // Create optimistic conversation
+    const tempConversationId = `temp-${Date.now()}`;
+    const optimisticConversation: DBConversation = {
+      conversationId: tempConversationId,
+      type: "GROUP",
+      name: name,
+      description: null,
+      participants: [...memberIds, currentUserId],
+      admins: [currentUserId],
+      createdBy: currentUserId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      lastMessageAt: new Date().toISOString(),
+      avatar: null, // Placeholder for group avatar
+    };
+
+    const optimisticUIConversation =
+      convertToUIConversation(optimisticConversation);
+
+    // Optimistically update UI
+    setConversations((prev) => [optimisticConversation, ...prev]);
+    setUiConversations((prev) => [optimisticUIConversation, ...prev]);
+    setSelectedConversation(optimisticConversation);
+    setSelectedUIConversation(optimisticUIConversation);
+
+    try {
+      // Call API to create group
+      const response = await fetch("/api/conversations/group", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name, memberIds }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create group");
+      }
+
+      const data = await response.json();
+      const actualConversation: DBConversation = data.conversation;
+
+      // Replace optimistic conversation with actual one
+      setConversations((prev) =>
+        prev.map((conv) =>
+          conv.conversationId === tempConversationId
+            ? actualConversation
+            : conv
+        )
+      );
+      setUiConversations((prev) =>
+        prev.map((conv) =>
+          conv.id === tempConversationId
+            ? convertToUIConversation(actualConversation)
+            : conv
+        )
+      );
+      setSelectedConversation(actualConversation);
+      setSelectedUIConversation(convertToUIConversation(actualConversation));
+    } catch (error) {
+      console.error("Error creating group:", error);
+      // Remove optimistic conversation on error
+      setConversations((prev) =>
+        prev.filter((conv) => conv.conversationId !== tempConversationId)
+      );
+      setUiConversations((prev) =>
+        prev.filter((conv) => conv.id !== tempConversationId)
+      );
+      alert("Failed to create group. Please try again.");
+    }
   };
 
   return {
