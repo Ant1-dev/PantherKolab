@@ -1,27 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useRef } from "react";
 import { MessageSquare, Phone, Settings, User, Menu } from "lucide-react";
 import { useAuth } from "@/components/contexts/AuthContext";
-import { useMessages } from "@/hooks/useMessages";
+import { useChat } from "@/hooks/useChat";
+import { getRecentUsers } from "@/components/chat/utils/conversationUtils";
+import { getProfileData } from "@/components/chat/utils/profileUtils";
 import ConversationList from "@/components/chat/conversationList";
-import MainChatArea from "@/components/chat/mainChatArea";
+import MainChatArea, {
+  type MainChatAreaRef,
+} from "@/components/chat/mainChatArea";
 import ProfileSidebar from "@/components/chat/profilesidebar";
-import type { Conversation as DBConversation } from "@/types/database";
-
-// Adapter type for ConversationList component
-interface UIConversation {
-  id: string;
-  name: string;
-  type: string;
-  avatar: string;
-  lastMessage: string;
-  lastMessageTime: string;
-  lastMessageSender?: string;
-  members?: number;
-  profileKey?: string;
-  unread?: number;
-}
 
 /**
  * Production Chat Page
@@ -30,170 +19,36 @@ interface UIConversation {
 export default function ChatPage() {
   const auth = useAuth();
   const currentUserId = auth.user?.userId || "";
+  const mainChatAreaRef = useRef<MainChatAreaRef>(null);
 
-  // State management
-  const [conversations, setConversations] = useState<DBConversation[]>([]);
-  const [uiConversations, setUiConversations] = useState<UIConversation[]>([]);
-  const [selectedConversation, setSelectedConversation] =
-    useState<DBConversation | null>(null);
-  const [selectedUIConversation, setSelectedUIConversation] =
-    useState<UIConversation | null>(null);
-  const [showProfile, setShowProfile] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"all" | "groups" | "dms">("all");
-  const [loadingConversations, setLoadingConversations] = useState(true);
-  const [conversationsError, setConversationsError] = useState<string | null>(
-    null
-  );
+  const {
+    conversations,
+    uiConversations,
+    selectedConversation,
+    selectedUIConversation,
+    showProfile,
+    searchQuery,
+    activeTab,
+    loadingConversations,
+    conversationsError,
+    messages,
+    loadingMessages,
+    messagesError,
+    setSearchQuery,
+    setActiveTab,
+    setShowProfile,
+    handleSelectConversation,
+    handleSendMessage,
+    handleSelectUser,
+    handleCreateGroup,
+  } = useChat(currentUserId);
+
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
 
-  // Real-time messaging hook
-  const {
-    messages,
-    loading: loadingMessages,
-    error: messagesError,
-    sendMessage,
-  } = useMessages({
-    conversationId: selectedConversation?.conversationId || null,
-    currentUserId,
-  });
+  const profileData = getProfileData(selectedConversation, currentUserId);
 
-  // Convert DB conversation to UI conversation format
-  const convertToUIConversation = (conv: DBConversation): UIConversation => {
-    return {
-      id: conv.conversationId,
-      name: conv.name || "Unnamed Conversation",
-      type: conv.type === "GROUP" ? "group" : "direct",
-      avatar: conv.avatar || "",
-      lastMessage: "No messages yet",
-      lastMessageTime: new Date(conv.createdAt).toLocaleDateString(),
-      members: conv.participants?.length,
-      unread: 0,
-    };
-  };
-
-  // Fetch user's conversations on mount
-  useEffect(() => {
-    const fetchConversations = async () => {
-      if (!currentUserId) return;
-
-      try {
-        setLoadingConversations(true);
-        const response = await fetch("/api/conversations", {
-          method: "GET",
-          credentials: "include",
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch conversations");
-        }
-
-        const data = await response.json();
-        const dbConvs: DBConversation[] = data.conversations || [];
-        setConversations(dbConvs);
-
-        // Convert to UI format
-        const uiConvs = dbConvs.map(convertToUIConversation);
-        setUiConversations(uiConvs);
-
-        // Auto-select first conversation if available
-        if (dbConvs.length > 0) {
-          setSelectedConversation(dbConvs[0]);
-          setSelectedUIConversation(uiConvs[0]);
-        }
-      } catch (error) {
-        console.error("Error fetching conversations:", error);
-        setConversationsError(
-          error instanceof Error ? error.message : "Unknown error"
-        );
-      } finally {
-        setLoadingConversations(false);
-      }
-    };
-
-    fetchConversations();
-  }, [currentUserId]);
-
-  // Get profile data for the current conversation
-  const getProfileData = () => {
-    if (!selectedConversation || selectedConversation.type === "GROUP") {
-      return null;
-    }
-
-    // For DM conversations, find the other participant
-    const otherUserId = selectedConversation.participants.find(
-      (id) => id !== currentUserId
-    );
-
-    if (!otherUserId) return null;
-
-    // TODO: Fetch user profile from API
-    // For now, return placeholder data matching ProfileData interface
-    return {
-      id: otherUserId,
-      name: selectedConversation.name || "Unknown User",
-      email: `${otherUserId}@fiu.edu`,
-      phone: "+1 (555) 000-0000",
-      status: "Available",
-      location: "Miami, FL",
-      about: "FIU Student",
-      groupsInCommon: [],
-    };
-  };
-
-  const profileData = getProfileData();
-
-  // Handle conversation selection
-  const handleSelectConversation = (uiConv: UIConversation) => {
-    // Find corresponding DB conversation
-    const dbConv = conversations.find((c) => c.conversationId === uiConv.id);
-    if (dbConv) {
-      setSelectedConversation(dbConv);
-      setSelectedUIConversation(uiConv);
-    }
-    setShowProfile(false);
-  };
-
-  // Handle sending messages
-  const handleSendMessage = async (content: string) => {
-    if (!content.trim() || !selectedConversation) return;
-
-    try {
-      await sendMessage(content, "TEXT");
-    } catch (error) {
-      console.error("Failed to send message:", error);
-      alert(
-        "Failed to send message: " +
-          (error instanceof Error ? error.message : "Unknown error")
-      );
-    }
-  };
-
-  // Handle new conversation user selection
-  const handleSelectUser = async (userId: string) => {
-    // TODO: Implement DM conversation creation
-    console.log("Creating DM with user:", userId);
-  };
-
-  // Handle new group creation
-  const handleCreateGroup = () => {
-    // TODO: Navigate to group creation flow
-    console.log("Creating new group");
-  };
-
-  // Get recent users from conversations for the dropdown
-  const getRecentUsers = () => {
-    return conversations
-      .filter((conv) => conv.type === "DM")
-      .map((conv) => {
-        const otherUserId = conv.participants.find((id) => id !== currentUserId);
-        return {
-          id: otherUserId || "",
-          name: conv.name || "Unknown User",
-          avatar: conv.avatar || undefined,
-        };
-      })
-      .filter((user) => user.id); // Remove any without valid IDs
+  const handleFocusMessageInput = () => {
+    mainChatAreaRef.current?.focusInput();
   };
 
   // Filter UI conversations based on active tab
@@ -211,7 +66,7 @@ export default function ChatPage() {
     : filteredConversations;
 
   return (
-    <div className="h-screen flex bg-white font-sans">
+    <div className="h-screen w-screen flex bg-white font-sans overflow-hidden">
       {/* Left Sidebar - Navigation */}
       <div
         className={`bg-[#0066CC] flex flex-col py-6 transition-all duration-300 ${
@@ -289,7 +144,7 @@ export default function ChatPage() {
           onSearchChange={setSearchQuery}
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          recentUsers={getRecentUsers()}
+          recentUsers={getRecentUsers(conversations, currentUserId)}
           onSelectUser={handleSelectUser}
           onCreateGroup={handleCreateGroup}
         />
@@ -297,6 +152,7 @@ export default function ChatPage() {
 
       {/* Main Chat Area Component */}
       <MainChatArea
+        ref={mainChatAreaRef}
         selectedConversation={selectedConversation}
         messages={messages}
         messageInput=""
@@ -309,9 +165,11 @@ export default function ChatPage() {
       />
 
       {/* Profile Sidebar Component */}
-      {profileData && (
-        <ProfileSidebar profileData={profileData} isVisible={showProfile} />
-      )}
+      <ProfileSidebar
+        profileData={profileData}
+        isVisible={showProfile}
+        onMessageClick={handleFocusMessageInput}
+      />
     </div>
   );
 }

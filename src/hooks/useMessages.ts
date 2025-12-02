@@ -92,7 +92,7 @@ export function useMessages({
    */
   const fetchMessages = useCallback(
     async (forceRefresh = false) => {
-      if (!conversationId) {
+      if (!conversationId || conversationId.startsWith("temp-")) {
         setMessages([]);
         return;
       }

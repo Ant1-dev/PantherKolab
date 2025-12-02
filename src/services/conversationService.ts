@@ -6,6 +6,7 @@ import {
   ScanCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { TABLE_NAMES, type Conversation } from "@/types/database";
+import { userService } from "./userService";
 
 interface CreateConversationInput {
   type: "DM" | "GROUP";
@@ -18,14 +19,15 @@ interface CreateConversationInput {
 
 export const conversationService = {
   async createConversation(
-    input: CreateConversationInput
+    input: CreateConversationInput,
+    conversationId?: string
   ): Promise<Conversation> {
     const now = new Date().toISOString();
 
     const conversation: Conversation = {
-      conversationId: crypto.randomUUID(),
+      conversationId: conversationId || crypto.randomUUID(),
       type: input.type,
-      name: input.name || null,
+      name: input.name || "anon",
       description: input.description || null,
       participants: input.participants,
       admins: input.type === "GROUP" ? [input.createdBy] : [], // Creator is admin for groups
@@ -40,7 +42,7 @@ export const conversationService = {
 
     await dynamoDb.send(
       new PutCommand({
-        TableName: process.env.DYNAMODB_CONVERSATIONS_TABLE,
+        TableName: TABLE_NAMES.CONVERSATIONS,
         Item: conversation,
       })
     );
@@ -54,7 +56,7 @@ export const conversationService = {
 
     const result = await dynamoDb.send(
       new GetCommand({
-        TableName: process.env.DYNAMODB_CONVERSATIONS_TABLE,
+        TableName: TABLE_NAMES.CONVERSATIONS,
         Key: { conversationId },
       })
     );
@@ -77,10 +79,30 @@ export const conversationService = {
       })
     );
 
-    console.log("All items from scan:", result.Items);
-    console.log("Total conversations found:", result.Items?.length || 0);
+    const conversations = (result.Items as Conversation[]) || [];
 
-    return (result.Items as Conversation[]) || [];
+    // Map over conversations to enrich DM names
+    const enrichedConversations = await Promise.all(
+      conversations.map(async (conv) => {
+        if (conv.type === "DM") {
+          const otherUserId = conv.participants.find((p) => p !== userId);
+          if (otherUserId) {
+            const otherUser = await userService.getUser(otherUserId);
+            if (otherUser) {
+              conv.name = `${otherUser.firstName} ${otherUser.lastName}`;
+            }
+          }
+        }
+        return conv;
+      })
+    );
+
+    console.log(
+      "Total conversations found:",
+      enrichedConversations.length || 0
+    );
+
+    return enrichedConversations;
   },
 
   async updateLastMessage(
@@ -96,7 +118,7 @@ export const conversationService = {
 
     await dynamoDb.send(
       new UpdateCommand({
-        TableName: process.env.DYNAMODB_CONVERSATIONS_TABLE,
+        TableName: TABLE_NAMES.CONVERSATIONS,
         Key: { conversationId },
         UpdateExpression: "SET lastMessageAt = :timestamp, updatedAt = :now",
         ExpressionAttributeValues: {
@@ -107,5 +129,42 @@ export const conversationService = {
     );
 
     console.log("Last message updated successfully");
+  },
+
+  /**
+   * Find an existing DM conversation between two users, or create a new one
+   */
+  async findOrCreateDM(
+    userId1: string,
+    userId2: string,
+    userName: string
+  ): Promise<Conversation> {
+    console.log("Finding or creating DM between:", userId1, "and", userId2);
+
+    // Create a deterministic conversationId for DMs
+    const sortedIds = [userId1, userId2].sort();
+    const dmConversationId = `dm_${sortedIds[0]}_${sortedIds[1]}`;
+
+    // 1. Try to get conversation directly
+    const existingDM = await this.getConversation(dmConversationId);
+
+    if (existingDM) {
+      console.log("Found existing DM:", existingDM.conversationId);
+      return existingDM;
+    }
+
+    // 2. Create new DM conversation if it doesn't exist
+    console.log("Creating new DM conversation with deterministic ID");
+    const newConversation = await this.createConversation(
+      {
+        type: "DM",
+        name: userName, // Name of the other user
+        participants: [userId1, userId2],
+        createdBy: userId1,
+      },
+      dmConversationId // Pass the deterministic ID
+    );
+
+    return newConversation;
   },
 };

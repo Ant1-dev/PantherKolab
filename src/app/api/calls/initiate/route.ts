@@ -51,6 +51,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid call type" }, { status: 400 });
     }
 
+    // Verify all participants exist
+    const userExistencePromises = participantIds.map((id) =>
+      userService.getUser(id)
+    );
+    const userExistenceResults = await Promise.all(userExistencePromises);
+
+    if (userExistenceResults.some((user) => user === null)) {
+      const invalidUserIdIndex = userExistenceResults.findIndex(
+        (user) => user === null
+      );
+      const invalidUserId = participantIds[invalidUserIdIndex];
+      return NextResponse.json(
+        { error: `Participant with ID '${invalidUserId}' not found.` },
+        { status: 404 }
+      );
+    }
+
     // For GROUP calls, validate conversationId and participants
     if (callType === "GROUP") {
       if (!conversationId) {

@@ -4,6 +4,17 @@ import path from "path";
 const nextConfig: NextConfig = {
   // Specify the correct workspace root to silence lockfile warning
   outputFileTracingRoot: path.join(__dirname),
+
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        port: "",
+        pathname: "/**",
+      },
+    ],
+  },
 };
 
 export default nextConfig;

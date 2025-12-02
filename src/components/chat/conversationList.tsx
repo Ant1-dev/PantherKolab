@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Search, SquarePen } from "lucide-react";
+import { Search, SquarePen, User, Users } from "lucide-react";
 import NewConversationDropdown from "./NewConversationDropdown";
+import Image from "next/image";
 
 interface Conversation {
   id: string;
@@ -170,26 +171,32 @@ export default function ConversationList({
               }`}
             >
               <div className="relative flex-shrink-0">
-                {conv.type === "group" ? (
+                {conv.avatar ? (
+                  <Image
+                    src={conv.avatar}
+                    alt={conv.name}
+                    className="w-12 h-12 rounded-full object-cover"
+                    width={12}
+                    height={12}
+                  />
+                ) : conv.type === "group" ? (
                   <>
-                    <div className="w-12 h-12 rounded-full bg-[#0066CC] flex items-center justify-center text-white font-bold text-sm">
-                      {conv.name.substring(0, 2).toUpperCase()}
+                    <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center text-gray-700">
+                      <Users className="w-5 h-5" />
                     </div>
                     <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center border border-gray-200">
                       <span className="text-xs">👥</span>
                     </div>
                   </>
                 ) : (
-                  <img
-                    src={conv.avatar}
-                    alt={conv.name}
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
+                  <div className="w-12 h-12 rounded-full bg-[#FFB300] flex items-center justify-center">
+                    <User className="w-5 h-5 text-gray-900" />
+                  </div>
                 )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
-                  <h3 className="font-semibold text-sm text-gray-900 truncate">
+                  <h3 className="font-semibold text-sm text-gray-900 truncate capitalize">
                     {conv.name}
                   </h3>
                 </div>
